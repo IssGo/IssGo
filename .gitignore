@@ -1,6 +1,6 @@
-# Binary
+# Binary (file only, not the Python package directory)
 issgo
-/issgo
+!issgo/
 
 # Release artifacts
 release/
@@ -29,3 +29,12 @@ coverage.txt
 
 # Docker
 docker-compose.override.yml
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+bin/

@@ -1,0 +1,1548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="IssGo — AI Agent + 自动化 CLI 工具。用自然语言下达任务，Agent 自动规划并执行。支持文件操作、Shell、HTTP、浏览器、Git、搜索等工具，兼容 DeepSeek、OpenAI、Ollama 等多种 LLM。">
+<meta name="keywords" content="IssGo, AI Agent, CLI, Automation, LLM, DeepSeek, OpenAI, Go, 自然语言, 自动化">
+<meta name="author" content="IssGo Team">
+<meta property="og:title" content="IssGo — AI Agent + 自动化 CLI">
+<meta property="og:description" content="用自然语言下达任务，Agent 自动规划并执行。支持 6 大工具，兼容所有主流 LLM 提供商。">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://issgo.github.io/issgo/">
+<title>IssGo — AI Agent + 自动化 CLI 工具</title>
+<style>
+/* ═══════════════════════════════════════════════════════════
+   CSS Variables & Reset
+   ═══════════════════════════════════════════════════════════ */
+:root {
+  --bg: #0a0a0f;
+  --bg-card: #12121a;
+  --bg-card-hover: #181825;
+  --border: #1e1e2e;
+  --text: #cdd6f4;
+  --text-muted: #a6adc8;
+  --text-dim: #6c7086;
+  --accent: #89b4fa;
+  --accent2: #a6e3a1;
+  --accent3: #f9e2af;
+  --accent4: #f38ba8;
+  --accent5: #cba6f7;
+  --accent6: #94e2d5;
+  --gradient-1: linear-gradient(135deg, #89b4fa 0%, #cba6f7 100%);
+  --gradient-2: linear-gradient(135deg, #a6e3a1 0%, #94e2d5 100%);
+  --gradient-3: linear-gradient(135deg, #f9e2af 0%, #f38ba8 100%);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 48px rgba(0,0,0,0.6);
+  --transition: 0.2s ease;
+  --max-w: 1200px;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; font-size:16px; }
+body {
+  background:var(--bg);
+  color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;
+  line-height:1.7;
+  overflow-x:hidden;
+}
+a { color:var(--accent); text-decoration:none; transition:color var(--transition); }
+a:hover { color:var(--accent5); }
+code, pre { font-family:var(--font-mono); }
+img { max-width:100%; height:auto; }
+
+/* ═══════════════════════════════════════════════════════════
+   Navigation
+   ═══════════════════════════════════════════════════════════ */
+nav {
+  position:fixed; top:0; left:0; right:0; z-index:1000;
+  background:rgba(10,10,15,0.85); backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  padding:0 24px; height:56px; display:flex; align-items:center;
+}
+.nav-inner {
+  max-width:var(--max-w); margin:0 auto; width:100%;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.nav-logo {
+  display:flex; align-items:center; gap:10px;
+  font-weight:800; font-size:1.25rem; color:var(--text);
+}
+.nav-logo .icon { width:32px; height:32px; }
+.nav-links { display:flex; gap:8px; flex-wrap:wrap; }
+.nav-links a {
+  color:var(--text-muted); font-size:0.875rem; padding:6px 12px;
+  border-radius:6px; transition:all var(--transition);
+}
+.nav-links a:hover { color:var(--text); background:var(--bg-card); }
+
+/* ═══════════════════════════════════════════════════════════
+   Sections
+   ═══════════════════════════════════════════════════════════ */
+section { padding:80px 24px; }
+.section-inner { max-width:var(--max-w); margin:0 auto; }
+
+.section-label {
+  display:inline-block; font-size:0.75rem; font-weight:700;
+  text-transform:uppercase; letter-spacing:0.1em;
+  color:var(--accent); margin-bottom:12px;
+}
+.section-title {
+  font-size:2.2rem; font-weight:800; line-height:1.2;
+  margin-bottom:16px; color:#fff;
+}
+.section-desc {
+  color:var(--text-muted); font-size:1.1rem; max-width:700px;
+  margin-bottom:40px;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Hero
+   ═══════════════════════════════════════════════════════════ */
+.hero {
+  padding-top:136px; padding-bottom:80px;
+  text-align:center; position:relative; overflow:hidden;
+}
+.hero::before {
+  content:''; position:absolute; top:-300px; left:50%; transform:translateX(-50%);
+  width:800px; height:800px; border-radius:50%;
+  background:radial-gradient(circle, rgba(137,180,250,0.08) 0%, transparent 70%);
+  pointer-events:none;
+}
+.hero-badge {
+  display:inline-flex; align-items:center; gap:8px;
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:100px; padding:6px 16px;
+  font-size:0.825rem; color:var(--text-muted); margin-bottom:28px;
+}
+.hero-badge .dot { width:8px; height:8px; border-radius:50%; background:var(--accent2); animation:pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+.hero h1 {
+  font-size:3.5rem; font-weight:900; line-height:1.1;
+  background:var(--gradient-1); -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent; background-clip:text;
+  margin-bottom:16px;
+}
+.hero-subtitle {
+  font-size:1.25rem; color:var(--text-muted); max-width:600px;
+  margin:0 auto 32px;
+}
+.hero-actions {
+  display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:40px;
+}
+.btn {
+  display:inline-flex; align-items:center; gap:8px;
+  padding:12px 24px; border-radius:var(--radius-sm); font-weight:600;
+  font-size:0.95rem; cursor:pointer; transition:all var(--transition);
+  border:none; text-decoration:none;
+}
+.btn-primary {
+  background:var(--accent); color:#000;
+}
+.btn-primary:hover { background:var(--accent5); color:#000; }
+.btn-outline {
+  background:transparent; border:1px solid var(--border); color:var(--text);
+}
+.btn-outline:hover { border-color:var(--accent); color:var(--accent); background:rgba(137,180,250,0.05); }
+.btn-ghost {
+  background:transparent; color:var(--text-muted);
+  padding:8px 16px; font-size:0.85rem;
+}
+.btn-ghost:hover { color:var(--text); }
+
+/* Terminal */
+.terminal {
+  max-width:680px; margin:0 auto;
+  background:rgba(18,18,26,0.95); border:1px solid var(--border);
+  border-radius:var(--radius-lg); overflow:hidden;
+  box-shadow:var(--shadow-lg); text-align:left;
+}
+.terminal-top {
+  display:flex; align-items:center; gap:8px;
+  padding:12px 16px; background:rgba(0,0,0,0.3);
+  border-bottom:1px solid var(--border);
+}
+.terminal-dot { width:12px; height:12px; border-radius:50%; }
+.terminal-dot:nth-child(1) { background:#f38ba8; }
+.terminal-dot:nth-child(2) { background:#f9e2af; }
+.terminal-dot:nth-child(3) { background:#a6e3a1; }
+.terminal-title { flex:1; text-align:center; font-size:0.8rem; color:var(--text-dim); }
+.terminal-body { padding:20px; overflow-x:auto; }
+.terminal-body pre { 
+  color:var(--text); font-size:0.85rem; line-height:1.6; margin:0;
+  white-space:pre-wrap; word-break:break-all;
+}
+.terminal-body .prompt { color:var(--accent2); }
+.terminal-body .cmd { color:var(--accent); }
+.terminal-body .arrow { color:var(--accent3); }
+.terminal-body .comment { color:var(--text-dim); }
+.terminal-body .dim { color:var(--text-dim); }
+.terminal-cursor {
+  display:inline-block; width:8px; height:16px; background:var(--accent);
+  animation:blink 1s step-end infinite; vertical-align:middle; margin-left:2px;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+/* ═══════════════════════════════════════════════════════════
+   Grids
+   ═══════════════════════════════════════════════════════════ */
+.grid-2 { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px; }
+.grid-3 { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; }
+.grid-4 { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:20px; }
+
+.card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:28px;
+  transition:all var(--transition);
+}
+.card:hover { background:var(--bg-card-hover); border-color:#2a2a3a; transform:translateY(-2px); box-shadow:var(--shadow); }
+.card-icon { font-size:2rem; margin-bottom:12px; }
+.card h3 { font-size:1.1rem; font-weight:700; margin-bottom:8px; color:#fff; }
+.card p { color:var(--text-muted); font-size:0.9rem; line-height:1.6; }
+
+/* Feature cards with gradient border */
+.feature-card {
+  position:relative; background:var(--bg-card);
+  border-radius:var(--radius); padding:32px;
+  transition:all var(--transition); overflow:hidden;
+}
+.feature-card::before {
+  content:''; position:absolute; top:0; left:0; right:0; height:3px;
+  border-radius:var(--radius) var(--radius) 0 0;
+}
+.feature-card:hover { transform:translateY(-4px); box-shadow:var(--shadow-lg); }
+.feature-card:nth-child(1)::before { background:var(--accent); }
+.feature-card:nth-child(2)::before { background:var(--accent2); }
+.feature-card:nth-child(3)::before { background:var(--accent3); }
+.feature-card:nth-child(4)::before { background:var(--accent4); }
+.feature-card:nth-child(5)::before { background:var(--accent5); }
+.feature-card:nth-child(6)::before { background:var(--accent6); }
+
+/* ═══════════════════════════════════════════════════════════
+   Code blocks
+   ═══════════════════════════════════════════════════════════ */
+.code-block {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); overflow:hidden; margin-bottom:16px;
+}
+.code-block-header {
+  display:flex; align-items:center; justify-content:space-between;
+  padding:10px 16px; background:rgba(0,0,0,0.2);
+  border-bottom:1px solid var(--border);
+}
+.code-block-label { font-size:0.8rem; color:var(--text-dim); }
+.code-block-copy {
+  background:none; border:none; color:var(--text-dim); cursor:pointer;
+  font-size:0.8rem; padding:4px 8px; border-radius:4px; transition:all var(--transition);
+}
+.code-block-copy:hover { color:var(--text); background:rgba(255,255,255,0.05); }
+.code-block pre {
+  padding:16px; margin:0; overflow-x:auto; font-size:0.85rem; line-height:1.7;
+  color:var(--text);
+}
+.code-block code { color:var(--text); }
+.code-block .kw { color:var(--accent4); }
+.code-block .str { color:var(--accent2); }
+.code-block .fn { color:var(--accent5); }
+.code-block .cmt { color:var(--text-dim); }
+
+/* ═══════════════════════════════════════════════════════════
+   Stats bar
+   ═══════════════════════════════════════════════════════════ */
+.stats {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr));
+  gap:20px; margin:40px 0;
+}
+.stat {
+  text-align:center; padding:24px; background:var(--bg-card);
+  border:1px solid var(--border); border-radius:var(--radius);
+}
+.stat-value {
+  font-size:2.5rem; font-weight:900;
+  background:var(--gradient-1); -webkit-background-clip:text;
+  -webkit-text-fill-color:transparent; background-clip:text;
+}
+.stat-label { color:var(--text-muted); font-size:0.9rem; margin-top:4px; }
+
+/* ═══════════════════════════════════════════════════════════
+   Install tabs
+   ═══════════════════════════════════════════════════════════ */
+.tabs { display:flex; gap:4px; margin-bottom:0; flex-wrap:wrap; }
+.tab {
+  padding:10px 20px; background:var(--bg-card); border:1px solid var(--border);
+  border-bottom:none; border-radius:var(--radius-sm) var(--radius-sm) 0 0;
+  cursor:pointer; font-size:0.9rem; color:var(--text-muted);
+  transition:all var(--transition);
+}
+.tab.active { background:var(--bg-card-hover); color:var(--accent); border-color:var(--accent); }
+.tab:hover { color:var(--text); }
+.tab-content { display:none; }
+.tab-content.active { display:block; }
+
+/* ═══════════════════════════════════════════════════════════
+   Command table
+   ═══════════════════════════════════════════════════════════ */
+.cmd-grid { display:grid; gap:16px; }
+.cmd-row {
+  display:grid; grid-template-columns:200px 1fr;
+  gap:16px; padding:16px; background:var(--bg-card);
+  border:1px solid var(--border); border-radius:var(--radius);
+  align-items:start;
+}
+.cmd-name {
+  font-family:var(--font-mono); font-weight:700; font-size:1rem;
+  color:var(--accent2);
+}
+.cmd-desc p { color:var(--text-muted); font-size:0.9rem; }
+.cmd-desc code { 
+  background:rgba(137,180,250,0.1); color:var(--accent3);
+  padding:1px 6px; border-radius:4px; font-size:0.85rem;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Tool cards
+   ═══════════════════════════════════════════════════════════ */
+.tool-card {
+  background:var(--bg-card); border:1px solid var(--border);
+  border-radius:var(--radius); padding:24px;
+  transition:all var(--transition);
+}
+.tool-card:hover { border-color:#333; transform:translateY(-2px); }
+.tool-header { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+.tool-icon {
+  width:44px; height:44px; border-radius:10px; display:flex;
+  align-items:center; justify-content:center; font-size:1.3rem;
+}
+.tool-icon.file { background:rgba(137,180,250,0.15); color:var(--accent); }
+.tool-icon.shell { background:rgba(166,227,161,0.15); color:var(--accent2); }
+.tool-icon.web { background:rgba(249,226,175,0.15); color:var(--accent3); }
+.tool-icon.browser { background:rgba(243,139,168,0.15); color:var(--accent4); }
+.tool-icon.git { background:rgba(203,166,247,0.15); color:var(--accent5); }
+.tool-icon.search { background:rgba(148,226,213,0.15); color:var(--accent6); }
+.tool-card h4 { font-size:1rem; font-weight:700; color:#fff; margin-bottom:8px; }
+.tool-card p { color:var(--text-muted); font-size:0.85rem; line-height:1.6; }
+.tool-actions { display:flex; gap:6px; flex-wrap:wrap; margin-top:12px; }
+.tool-tag {
+  font-family:var(--font-mono); font-size:0.75rem;
+  padding:3px 10px; border-radius:100px;
+  background:rgba(255,255,255,0.04); color:var(--text-dim);
+  border:1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Architecture diagram
+   ═══════════════════════════════════════════════════════════ */
+.arch-flow { display:flex; gap:0; align-items:stretch; flex-wrap:wrap; margin:32px 0; justify-content:center; }
+.arch-step {
+  flex:1; min-width:140px; max-width:200px; padding:24px 16px;
+  background:var(--bg-card); border:1px solid var(--border); text-align:center;
+  position:relative;
+}
+.arch-step:first-child { border-radius:var(--radius) 0 0 var(--radius); }
+.arch-step:last-child { border-radius:0 var(--radius) var(--radius) 0; }
+.arch-step:not(:first-child)::after {
+  content:'→'; position:absolute; left:-18px; top:50%; transform:translateY(-50%);
+  font-size:1.5rem; color:var(--accent); z-index:1;
+}
+.arch-step-icon { font-size:1.8rem; margin-bottom:8px; }
+.arch-step h4 { font-size:0.9rem; font-weight:700; color:#fff; }
+.arch-step p { color:var(--text-dim); font-size:0.75rem; }
+
+.react-loop {
+  display:flex; justify-content:center; gap:20px; flex-wrap:wrap; margin:24px 0;
+}
+.react-node {
+  width:120px; height:120px; border-radius:50%;
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  text-align:center; border:2px solid var(--border);
+  background:var(--bg-card); transition:all var(--transition);
+}
+.react-node:hover { transform:scale(1.05); }
+.react-node.reason { border-color:var(--accent); }
+.react-node.act { border-color:var(--accent2); }
+.react-node.observe { border-color:var(--accent3); }
+.react-node h5 { font-size:0.85rem; color:#fff; margin-bottom:4px; }
+.react-node span { font-size:0.7rem; color:var(--text-dim); }
+.react-arrow {
+  display:flex; align-items:center; font-size:1.5rem; color:var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   API endpoints table
+   ═══════════════════════════════════════════════════════════ */
+.endpoint-table { width:100%; border-collapse:collapse; margin:20px 0; font-size:0.9rem; }
+.endpoint-table th {
+  text-align:left; padding:12px 16px; color:var(--text-dim);
+  font-size:0.8rem; text-transform:uppercase; letter-spacing:0.05em;
+  border-bottom:1px solid var(--border);
+}
+.endpoint-table td { padding:14px 16px; border-bottom:1px solid var(--border); color:var(--text-muted); }
+.endpoint-table tr:hover td { background:rgba(255,255,255,0.02); }
+.endpoint-table .method {
+  font-family:var(--font-mono); font-weight:700; font-size:0.8rem;
+  padding:3px 8px; border-radius:4px;
+}
+.method.get { background:rgba(166,227,161,0.15); color:var(--accent2); }
+.method.post { background:rgba(137,180,250,0.15); color:var(--accent); }
+.method-path { font-family:var(--font-mono); color:var(--accent5); }
+
+/* ═══════════════════════════════════════════════════════════
+   Providers table
+   ═══════════════════════════════════════════════════════════ */
+.provider-table { width:100%; border-collapse:collapse; margin:20px 0; }
+.provider-table th {
+  text-align:left; padding:12px 16px; color:var(--text-dim);
+  font-size:0.8rem; text-transform:uppercase; border-bottom:1px solid var(--border);
+}
+.provider-table td { padding:14px 16px; border-bottom:1px solid var(--border); }
+.provider-table code {
+  background:rgba(137,180,250,0.1); color:var(--accent3);
+  padding:2px 8px; border-radius:4px; font-size:0.85rem;
+}
+.badge {
+  display:inline-block; padding:2px 10px; border-radius:100px;
+  font-size:0.75rem; font-weight:600;
+}
+.badge.green { background:rgba(166,227,161,0.15); color:var(--accent2); }
+.badge.blue { background:rgba(137,180,250,0.15); color:var(--accent); }
+.badge.purple { background:rgba(203,166,247,0.15); color:var(--accent5); }
+
+/* ═══════════════════════════════════════════════════════════
+   FAQ Accordion
+   ═══════════════════════════════════════════════════════════ */
+.faq-item {
+  border:1px solid var(--border); border-radius:var(--radius);
+  margin-bottom:12px; overflow:hidden; background:var(--bg-card);
+}
+.faq-q {
+  padding:18px 24px; cursor:pointer; font-weight:600; color:#fff;
+  display:flex; align-items:center; justify-content:space-between;
+  transition:background var(--transition); font-size:0.95rem;
+}
+.faq-q:hover { background:rgba(255,255,255,0.02); }
+.faq-q::after { content:'+'; font-size:1.2rem; color:var(--accent); transition:transform var(--transition); }
+.faq-item.open .faq-q::after { content:'−'; }
+.faq-a {
+  max-height:0; overflow:hidden; transition:max-height 0.3s ease;
+  padding:0 24px; color:var(--text-muted); font-size:0.9rem; line-height:1.7;
+}
+.faq-item.open .faq-a { max-height:500px; padding:0 24px 18px; }
+
+/* ═══════════════════════════════════════════════════════════
+   Footer
+   ═══════════════════════════════════════════════════════════ */
+footer {
+  border-top:1px solid var(--border); padding:48px 24px 32px;
+  text-align:center; color:var(--text-dim); font-size:0.85rem;
+}
+.footer-grid {
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:32px; text-align:left; max-width:var(--max-w); margin:0 auto 40px;
+}
+.footer-grid h4 { color:#fff; font-size:0.9rem; margin-bottom:12px; }
+.footer-grid a { display:block; color:var(--text-muted); font-size:0.85rem; padding:4px 0; }
+.footer-grid a:hover { color:var(--accent); }
+.footer-bottom { max-width:var(--max-w); margin:0 auto; border-top:1px solid var(--border); padding-top:24px; }
+
+/* ═══════════════════════════════════════════════════════════
+   Responsive
+   ═══════════════════════════════════════════════════════════ */
+@media (max-width:768px) {
+  section { padding:48px 16px; }
+  .hero { padding-top:100px; }
+  .hero h1 { font-size:2.2rem; }
+  .section-title { font-size:1.6rem; }
+  .cmd-row { grid-template-columns:1fr; }
+  .arch-step:not(:first-child)::after { display:none; }
+  .arch-step { border-radius:var(--radius) !important; margin-bottom:8px; }
+  .arch-flow { flex-direction:column; }
+  .nav-links { display:none; }
+}
+@media (max-width:480px) {
+  .hero h1 { font-size:1.7rem; }
+  .hero-subtitle { font-size:1rem; }
+  .tabs { flex-direction:column; }
+  .tab { border-radius:var(--radius-sm); border:1px solid var(--border); }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ NAVIGATION ═══════════════════ -->
+<nav>
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">
+      <svg class="icon" viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="8" fill="url(#g1)"/>
+        <path d="M8 16l5-5 3 3 6-6" stroke="#0a0a0f" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+        <defs><linearGradient id="g1" x1="0" y1="0" x2="32" y2="32"><stop stop-color="#89b4fa"/><stop offset="1" stop-color="#cba6f7"/></linearGradient></defs>
+      </svg>
+      IssGo
+    </a>
+    <div class="nav-links">
+      <a href="#features">特性</a>
+      <a href="#install">安装</a>
+      <a href="#quickstart">快速开始</a>
+      <a href="#commands">命令</a>
+      <a href="#architecture">架构</a>
+      <a href="#tools">工具</a>
+      <a href="#config">配置</a>
+      <a href="#llm">LLM</a>
+      <a href="#api">API</a>
+      <a href="#faq">FAQ</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ═══════════════════ HERO ═══════════════════ -->
+<section class="hero" id="hero">
+  <div class="section-inner">
+    <div class="hero-badge">
+      <span class="dot"></span> v2026.06.30 · MIT License · 已开源
+    </div>
+    <h1>用自然语言<br>驱动自动化</h1>
+    <p class="hero-subtitle">
+      IssGo 是一个运行在本地的 AI Agent 命令行工具。你只需描述「做什么」，Agent 自动分解任务、调用工具执行、汇总结果返回。
+    </p>
+    <div class="hero-actions">
+      <a href="#install" class="btn btn-primary">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        开始使用
+      </a>
+      <a href="https://github.com/issgo/issgo" class="btn btn-outline" target="_blank">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.73.083-.73 1.205.085 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.418-1.305.762-1.604-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 21.795 24 17.295 24 12c0-6.63-5.37-12-12-12z"/></svg>
+        GitHub
+      </a>
+    </div>
+
+    <div class="terminal">
+      <div class="terminal-top">
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-dot"></span>
+        <span class="terminal-title">issgo — bash</span>
+      </div>
+      <div class="terminal-body">
+        <pre><span class="prompt">$</span> <span class="cmd">issgo run</span> <span class="str">"找出项目中所有 TODO 注释，按文件分组，保存到 todos.md"</span>
+
+<span class="dim">Task: 找出项目中所有 TODO 注释，按文件分组，保存到 todos.md</span>
+
+<span class="arrow">  →</span> <span class="dim">[plan]</span> 搜索所有 Go 文件中的 TODO 注释
+<span class="arrow">  →</span> <span class="dim">[step 1]</span> grep -rn "TODO" --include="*.go" . <span class="dim">→ 发现 23 条</span>
+<span class="arrow">  →</span> <span class="dim">[step 2]</span> 按文件分组排序
+<span class="arrow">  →</span> <span class="dim">[step 3]</span> 写入 todos.md
+
+<span class="accent2">Result:</span> 已在 12 个文件中找到 23 条 TODO 注释，结果保存到 todos.md。
+
+<span class="prompt">$</span> <span class="cmd">issgo run</span> <span class="str">"检查磁盘使用率、内存和 CPU 负载，生成健康报告"</span>
+
+<span class="arrow">  →</span> <span class="dim">[step 1]</span> df -h <span class="dim">→ 磁盘使用率</span>
+<span class="arrow">  →</span> <span class="dim">[step 2]</span> free -m <span class="dim">→ 内存信息</span>
+<span class="arrow">  →</span> <span class="dim">[step 3]</span> uptime <span class="dim">→ CPU 负载</span>
+<span class="arrow">  →</span> <span class="dim">[step 4]</span> 生成 Markdown 报告 &amp; 保存
+
+<span class="accent2">Result:</span> 健康报告已保存到 health-report.md <span class="comment"># ✅</span>
+
+<span class="prompt">$</span> <span class="terminal-cursor"></span></pre>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ STATS ═══════════════════ -->
+<section style="padding:0 24px 56px;">
+  <div class="section-inner">
+    <div class="stats">
+      <div class="stat">
+        <div class="stat-value">6</div>
+        <div class="stat-label">内置工具</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">5+</div>
+        <div class="stat-label">LLM 提供商</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">7</div>
+        <div class="stat-label">CLI 命令</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">3</div>
+        <div class="stat-label">操作系统支持</div>
+      </div>
+      <div class="stat">
+        <div class="stat-value">∞</div>
+        <div class="stat-label">可扩展插件</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ FEATURES ═══════════════════ -->
+<section id="features">
+  <div class="section-inner">
+    <span class="section-label">Features</span>
+    <h2 class="section-title">为什么选择 IssGo？</h2>
+    <p class="section-desc">不仅仅是 CLI 工具 — IssGo 是一个完整的 AI Agent 运行时，把 LLM 的能力直接带到你的终端。</p>
+    <div class="grid-3">
+      <div class="feature-card">
+        <div class="card-icon">🗣️</div>
+        <h3>自然语言驱动</h3>
+        <p>不需要记命令。用中文或英文描述你想做什么，Agent 自动理解意图、规划步骤、执行操作。</p>
+      </div>
+      <div class="feature-card">
+        <div class="card-icon">🔄</div>
+        <h3>ReAct 推理循环</h3>
+        <p>Reason → Act → Observe，Agent 在每一步都先思考再行动，观察结果后决定下一步，直到任务完成。</p>
+      </div>
+      <div class="feature-card">
+        <div class="card-icon">🧰</div>
+        <h3>6 大内置工具</h3>
+        <p>文件操作、Shell 命令、HTTP 请求、无头浏览器、Git 操作、代码搜索 — 覆盖绝大多数自动化场景。</p>
+      </div>
+      <div class="feature-card">
+        <div class="card-icon">🔌</div>
+        <h3>多 LLM 提供商</h3>
+        <p>DeepSeek、OpenAI、Ollama、Groq、vLLM……兼容所有 OpenAI API 格式的服务，配置文件一键切换。</p>
+      </div>
+      <div class="feature-card">
+        <div class="card-icon">🪞</div>
+        <h3>自反思 (Reflector)</h3>
+        <p>Agent 在执行后会自我反思：当前方案是否有效？是否需要重新规划？避免陷入无效循环。</p>
+      </div>
+      <div class="feature-card">
+        <div class="card-icon">🛡️</div>
+        <h3>安全沙箱</h3>
+        <p>静态分析 + LLM 动态审查双重保护。危险命令（rm -rf /、fork bomb 等）自动拦截，可选人工确认。</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ INSTALL ═══════════════════ -->
+<section id="install" style="background:rgba(137,180,250,0.02);">
+  <div class="section-inner">
+    <span class="section-label">Install</span>
+    <h2 class="section-title">安装 IssGo</h2>
+    <p class="section-desc">多种安装方式，覆盖所有主流平台。需要 Go 1.24+ 或 Python 3.8+。</p>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab(event,'tab-go')">go install</button>
+      <button class="tab" onclick="switchTab(event,'tab-pip')">pip install</button>
+      <button class="tab" onclick="switchTab(event,'tab-source')">从源码编译</button>
+      <button class="tab" onclick="switchTab(event,'tab-brew')">Homebrew</button>
+    </div>
+
+    <div class="tab-content active" id="tab-go">
+      <div class="code-block">
+        <div class="code-block-header">
+          <span class="code-block-label">Shell</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>go install github.com/issgo/issgo@latest</code></pre>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-pip">
+      <div class="code-block">
+        <div class="code-block-header">
+          <span class="code-block-label">Shell</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>pip install issgo
+<span class="cmt"># 首次运行自动下载对应平台的 Go 二进制</span>
+issgo version</code></pre>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-source">
+      <div class="code-block">
+        <div class="code-block-header">
+          <span class="code-block-label">Shell</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>git clone https://github.com/issgo/issgo.git
+<span class="kw">cd</span> issgo
+go mod tidy
+go build -o issgo .
+sudo mv issgo /usr/local/bin/</code></pre>
+      </div>
+    </div>
+    <div class="tab-content" id="tab-brew">
+      <div class="code-block">
+        <div class="code-block-header">
+          <span class="code-block-label">Shell</span>
+          <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+        </div>
+        <pre><code>brew tap issgo/tap
+brew install issgo</code></pre>
+      </div>
+    </div>
+
+    <p style="color:var(--text-dim);font-size:0.85rem;margin-top:12px;">
+      <strong>前置条件：</strong>Go 1.24+ 或 Python 3.8+ · DeepSeek API Key（或任意 OpenAI 兼容 API Key）· 可选：Chrome/Chromium（浏览器工具需要）
+    </p>
+  </div>
+</section>
+
+<!-- ═══════════════════ QUICK START ═══════════════════ -->
+<section id="quickstart">
+  <div class="section-inner">
+    <span class="section-label">Quick Start</span>
+    <h2 class="section-title">4 步上手</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="card-icon">①</div>
+        <h3>初始化配置</h3>
+        <p>在项目目录生成 <code>.issgo.yaml</code> 配置文件，或直接使用环境变量。</p>
+        <div class="code-block" style="margin-top:12px;">
+          <pre><code>issgo init</code></pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">②</div>
+        <h3>设置 API Key</h3>
+        <p>将 LLM API 密钥写入环境变量（推荐），避免明文泄露。</p>
+        <div class="code-block" style="margin-top:12px;">
+          <pre><code><span class="kw">export</span> <span class="fn">ISSGO_LLM_API_KEY</span>=<span class="str">"sk-your-key"</span></code></pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">③</div>
+        <h3>运行任务</h3>
+        <p>用自然语言描述任务，Agent 自动规划并执行。</p>
+        <div class="code-block" style="margin-top:12px;">
+          <pre><code>issgo run <span class="str">"统计当前目录下每种文件类型的数量"</span></code></pre>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-icon">④</div>
+        <h3>进阶用法</h3>
+        <p>交互式对话、文件监控、HTTP API 服务器……探索更多功能。</p>
+        <div class="code-block" style="margin-top:12px;">
+          <pre><code>issgo chat
+issgo watch . --on-change <span class="str">"运行测试"</span>
+issgo serve --port 8420</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ COMMANDS ═══════════════════ -->
+<section id="commands" style="background:rgba(137,180,250,0.02);">
+  <div class="section-inner">
+    <span class="section-label">Commands</span>
+    <h2 class="section-title">命令参考</h2>
+    <p class="section-desc">IssGo 提供 7 个核心命令，覆盖初始化、执行、对话、监听、配置、服务和版本。</p>
+
+    <div class="cmd-grid">
+      <div class="cmd-row">
+        <div class="cmd-name">issgo init</div>
+        <div class="cmd-desc">
+          <p>在当前目录生成 <code>.issgo.yaml</code> 配置文件。使用 <code>--force</code> 或 <code>-f</code> 强制覆盖已有配置。</p>
+        </div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-name">issgo run</div>
+        <div class="cmd-desc">
+          <p>执行 AI 任务。任务描述可以是任意自然语言。支持 <code>--verbose</code> / <code>-v</code> 输出详细日志。</p>
+          <p style="margin-top:6px;font-size:0.82rem;color:var(--text-dim);">示例：issgo run "审查 cmd/ 目录下的代码，检查错误处理是否完整"</p>
+        </div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-name">issgo chat</div>
+        <div class="cmd-desc">
+          <p>启动交互式对话模式。保持对话历史，支持流式输出。适合多轮复杂任务和探索性操作。</p>
+        </div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-name">issgo watch</div>
+        <div class="cmd-desc">
+          <p>递归监听目录变化，变化时自动触发 AI 任务。<code>--on-change</code> / <code>-c</code> 指定任务，<code>--debounce</code> 设置防抖（默认 500ms）。</p>
+          <p style="margin-top:6px;font-size:0.82rem;color:var(--text-dim);">示例：issgo watch . --on-change "运行 go test ./... 并修复失败的测试"</p>
+        </div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-name">issgo config</div>
+        <div class="cmd-desc">
+          <p>显示或编辑当前配置。支持 <code>--profile</code> / <code>-p</code> 快速切换 LLM 提供商配置。</p>
+        </div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-name">issgo serve</div>
+        <div class="cmd-desc">
+          <p>启动 HTTP API 服务器（默认端口 8420）。支持 REST + SSE 流式传输，可绑定到任意地址。</p>
+          <p style="margin-top:6px;font-size:0.82rem;color:var(--text-dim);">示例：issgo serve --host 0.0.0.0 --port 8080</p>
+        </div>
+      </div>
+      <div class="cmd-row">
+        <div class="cmd-name">issgo version</div>
+        <div class="cmd-desc">
+          <p>显示版本号、构建时间和 Git 提交哈希。版本号通过 <code>-ldflags</code> 在构建时注入。</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ ARCHITECTURE ═══════════════════ -->
+<section id="architecture">
+  <div class="section-inner">
+    <span class="section-label">Architecture</span>
+    <h2 class="section-title">架构设计</h2>
+    <p class="section-desc">IssGo 采用清晰的分层架构，每个组件职责明确、可独立测试。</p>
+
+    <h3 style="color:#fff;margin-bottom:16px;font-size:1.1rem;">核心流程</h3>
+    <div class="arch-flow">
+      <div class="arch-step">
+        <div class="arch-step-icon">⌨️</div>
+        <h4>CLI</h4>
+        <p>Cobra 解析命令<br>加载配置<br>初始化日志</p>
+      </div>
+      <div class="arch-step">
+        <div class="arch-step-icon">🧠</div>
+        <h4>Agent</h4>
+        <p>创建组件<br>组装 LLM<br>注册工具</p>
+      </div>
+      <div class="arch-step">
+        <div class="arch-step-icon">🔁</div>
+        <h4>Executor</h4>
+        <p>ReAct 循环<br>调用工具<br>收集结果</p>
+      </div>
+      <div class="arch-step">
+        <div class="arch-step-icon">📤</div>
+        <h4>Output</h4>
+        <p>汇总响应<br>Session 存档<br>返回用户</p>
+      </div>
+    </div>
+
+    <h3 style="color:#fff;margin:48px 0 16px;font-size:1.1rem;">ReAct 循环</h3>
+    <div class="react-loop">
+      <div class="react-node reason">
+        <h5>Reason</h5>
+        <span>LLM 分析状态<br>决定下一步</span>
+      </div>
+      <div class="react-arrow">→</div>
+      <div class="react-node act">
+        <h5>Act</h5>
+        <span>调用 Tool<br>执行操作</span>
+      </div>
+      <div class="react-arrow">→</div>
+      <div class="react-node observe">
+        <h5>Observe</h5>
+        <span>收集结果<br>注入历史</span>
+      </div>
+      <div class="react-arrow">→</div>
+      <div class="react-node" style="border-style:dashed;">
+        <h5>Repeat</h5>
+        <span>直到完成<br>或达到上限</span>
+      </div>
+    </div>
+
+    <h3 style="color:#fff;margin:48px 0 16px;font-size:1.1rem;">项目结构</h3>
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-block-label">issgo/ 目录树</span>
+        <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+      </div>
+      <pre><code>issgo/
+├── main.go                     <span class="cmt"># 程序入口</span>
+├── cmd/                         <span class="cmt"># CLI 命令 (Cobra)</span>
+│   ├── root.go                 <span class="cmt"># 根命令 &amp; 全局参数</span>
+│   ├── init.go                 <span class="cmt"># issgo init</span>
+│   ├── run.go                  <span class="cmt"># issgo run</span>
+│   ├── chat.go                 <span class="cmt"># issgo chat (交互模式)</span>
+│   ├── watch.go                <span class="cmt"># issgo watch (fsnotify)</span>
+│   ├── config.go               <span class="cmt"># issgo config</span>
+│   ├── serve.go                <span class="cmt"># issgo serve (HTTP API)</span>
+│   └── version.go              <span class="cmt"># issgo version</span>
+├── agent/                       <span class="cmt"># Agent 核心模块</span>
+│   ├── agent.go                <span class="cmt"># Agent 门面：组装各组件</span>
+│   ├── planner.go              <span class="cmt"># 任务规划器</span>
+│   ├── executor.go             <span class="cmt"># 执行器 (ReAct 循环)</span>
+│   ├── memory.go               <span class="cmt"># 对话历史 &amp; 压缩</span>
+│   ├── reflector.go            <span class="cmt"># 自反思模块</span>
+│   ├── safety.go               <span class="cmt"># 安全审查</span>
+│   ├── session.go              <span class="cmt"># 会话管理 (JSON 持久化)</span>
+│   └── stream.go               <span class="cmt"># 流式输出</span>
+├── tools/                       <span class="cmt"># 工具系统</span>
+│   ├── tools.go                <span class="cmt"># Tool 接口 + Registry</span>
+│   ├── file.go                 <span class="cmt"># 文件工具 (10 种操作)</span>
+│   ├── shell.go                <span class="cmt"># Shell 工具 (120s 超时)</span>
+│   ├── web.go                  <span class="cmt"># HTTP 工具 (resty)</span>
+│   ├── browser.go              <span class="cmt"># 浏览器工具 (chromedp)</span>
+│   ├── git.go                  <span class="cmt"># Git 工具 (15+ 子命令)</span>
+│   ├── search.go               <span class="cmt"># 搜索工具 (regex+glob)</span>
+│   └── plugin.go               <span class="cmt"># 插件系统</span>
+├── llm/                         <span class="cmt"># LLM 抽象层</span>
+│   ├── provider.go             <span class="cmt"># Provider 接口 + 数据类型</span>
+│   ├── client.go               <span class="cmt"># 统一客户端 (重试/缓存)</span>
+│   ├── openai.go               <span class="cmt"># OpenAI 兼容实现</span>
+│   ├── ollama.go               <span class="cmt"># Ollama 本地模型支持</span>
+│   └── cache.go                <span class="cmt"># 响应缓存</span>
+├── config/                      <span class="cmt"># 配置系统</span>
+│   ├── config.go               <span class="cmt"># 配置加载 (viper)</span>
+│   ├── profile.go              <span class="cmt"># 多 Profile 支持</span>
+│   └── validate.go             <span class="cmt"># 配置校验</span>
+├── server/                      <span class="cmt"># HTTP API Server</span>
+│   ├── server.go               <span class="cmt"># Server 主体</span>
+│   ├── handler.go              <span class="cmt"># API 处理器</span>
+│   └── middleware.go            <span class="cmt"># CORS/Logging/Auth</span>
+├── prompts/                     <span class="cmt"># Prompt 模板</span>
+│   └── templates.go            <span class="cmt"># System/Planner/Reflector/Safety/Memory</span>
+└── internal/                    <span class="cmt"># 内部工具包</span>
+    ├── logger/                  <span class="cmt"># 结构化日志 (zap)</span>
+    ├── safe/                    <span class="cmt"># 命令安全检查</span>
+    ├── diff/                    <span class="cmt"># 差异对比</span>
+    ├── progress/                <span class="cmt"># 进度显示</span>
+    ├── spinner/                 <span class="cmt"># 终端动画</span>
+    └── utils/                   <span class="cmt"># 通用工具函数</span></code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ TOOLS ═══════════════════ -->
+<section id="tools" style="background:rgba(137,180,250,0.02);">
+  <div class="section-inner">
+    <span class="section-label">Tools</span>
+    <h2 class="section-title">内置工具集</h2>
+    <p class="section-desc">6 个内置工具 + 插件系统，可在配置文件中独立开关。每个工具都有严格的超时和安全限制。</p>
+
+    <div class="grid-3">
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon file">📄</div>
+          <div>
+            <h4>file</h4>
+            <span style="color:var(--text-dim);font-size:0.8rem;">文件操作</span>
+          </div>
+        </div>
+        <p>读取、写入、列表、删除、复制、移动、检查存在、获取状态、创建目录、追加内容 — 共 10 种文件操作。</p>
+        <div class="tool-actions">
+          <span class="tool-tag">read</span><span class="tool-tag">write</span><span class="tool-tag">list</span>
+          <span class="tool-tag">delete</span><span class="tool-tag">copy</span><span class="tool-tag">move</span>
+          <span class="tool-tag">exists</span><span class="tool-tag">stat</span><span class="tool-tag">mkdir</span>
+          <span class="tool-tag">append</span>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon shell">⚡</div>
+          <div>
+            <h4>shell</h4>
+            <span style="color:var(--text-dim);font-size:0.8rem;">Shell 命令</span>
+          </div>
+        </div>
+        <p>通过 bash -c 执行任意命令，120 秒超时自动终止。支持自定义工作目录和环境变量。输出自动截断 + 特殊字符净化。</p>
+        <div class="tool-actions">
+          <span class="tool-tag">command</span><span class="tool-tag">working_dir</span>
+          <span class="tool-tag">env</span><span class="tool-tag">timeout_sec</span>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon web">🌐</div>
+          <div>
+            <h4>web</h4>
+            <span style="color:var(--text-dim);font-size:0.8rem;">HTTP 请求</span>
+          </div>
+        </div>
+        <p>完整的 HTTP 客户端，支持 GET/POST/PUT/DELETE/PATCH/HEAD/OPTIONS，自定义 Header、Body、Basic Auth，跟随重定向。</p>
+        <div class="tool-actions">
+          <span class="tool-tag">GET</span><span class="tool-tag">POST</span><span class="tool-tag">PUT</span>
+          <span class="tool-tag">DELETE</span><span class="tool-tag">PATCH</span><span class="tool-tag">Basic Auth</span>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon browser">🖥️</div>
+          <div>
+            <h4>browser</h4>
+            <span style="color:var(--text-dim);font-size:0.8rem;">浏览器自动化</span>
+          </div>
+        </div>
+        <p>基于 Chrome DevTools Protocol 的无头浏览器。导航、截图、内容提取、文本提取、点击、JS 执行 — 6 种操作。</p>
+        <div class="tool-actions">
+          <span class="tool-tag">navigate</span><span class="tool-tag">screenshot</span>
+          <span class="tool-tag">content</span><span class="tool-tag">text</span>
+          <span class="tool-tag">click</span><span class="tool-tag">eval</span>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon git">🔀</div>
+          <div>
+            <h4>git</h4>
+            <span style="color:var(--text-dim);font-size:0.8rem;">版本控制</span>
+          </div>
+        </div>
+        <p>安全的 Git 操作封装。支持 15+ 子命令，自动阻止 force push 到 main/master，60 秒超时保护。</p>
+        <div class="tool-actions">
+          <span class="tool-tag">status</span><span class="tool-tag">diff</span><span class="tool-tag">log</span>
+          <span class="tool-tag">branch</span><span class="tool-tag">commit</span><span class="tool-tag">push</span>
+          <span class="tool-tag">pull</span><span class="tool-tag">checkout</span><span class="tool-tag">stash</span>
+          <span class="tool-tag">tag</span><span class="tool-tag">show</span><span class="tool-tag">blame</span>
+          <span class="tool-tag">remote</span><span class="tool-tag">describe</span><span class="tool-tag">rev-parse</span>
+        </div>
+      </div>
+
+      <div class="tool-card">
+        <div class="tool-header">
+          <div class="tool-icon search">🔍</div>
+          <div>
+            <h4>search</h4>
+            <span style="color:var(--text-dim);font-size:0.8rem;">代码搜索</span>
+          </div>
+        </div>
+        <p>递归文件内容搜索。支持正则表达式、字面量匹配、Glob 文件过滤、深度限制、结果数量上限。自动跳过 .git/node_modules 等目录。</p>
+        <div class="tool-actions">
+          <span class="tool-tag">regex</span><span class="tool-tag">literal</span>
+          <span class="tool-tag">glob</span><span class="tool-tag">max_depth</span>
+          <span class="tool-tag">max_results</span>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:32px;padding:24px;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px;">
+        <div class="tool-icon search" style="width:36px;height:36px;font-size:1rem;">🔌</div>
+        <h4 style="color:#fff;font-size:1rem;">插件系统</h4>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.9rem;">
+        将可执行脚本放入 <code style="background:rgba(137,180,250,0.1);color:var(--accent3);padding:2px 6px;border-radius:4px;">~/.issgo/plugins/</code> 目录，脚本通过 <code>--issgo-manifest</code> 标志输出 JSON 清单（name、description、schema），即可作为工具注册到 Agent。支持任何语言编写的插件 — Python、Node.js、Shell、Go 等。</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ CONFIG ═══════════════════ -->
+<section id="config">
+  <div class="section-inner">
+    <span class="section-label">Configuration</span>
+    <h2 class="section-title">配置参考</h2>
+    <p class="section-desc">YAML 配置文件 + 环境变量覆盖，支持多 Profile 快速切换 LLM 提供商。</p>
+
+    <div class="grid-2">
+      <div>
+        <h3 style="color:#fff;font-size:1rem;margin-bottom:12px;">.issgo.yaml 完整配置</h3>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-label">.issgo.yaml</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="kw">llm:</span>
+  <span class="fn">provider</span>: deepseek          <span class="cmt"># deepseek | openai | custom</span>
+  <span class="fn">model</span>: deepseek-chat        <span class="cmt"># 模型名称</span>
+  <span class="fn">api_key</span>: ""                 <span class="cmt"># 留空则从环境变量读取</span>
+  <span class="fn">base_url</span>: https://api.deepseek.com
+  <span class="fn">temperature</span>: 0.7
+  <span class="fn">max_tokens</span>: 4096
+  <span class="fn">timeout_secs</span>: 120
+  <span class="fn">retry_count</span>: 3
+
+<span class="kw">tools:</span>
+  <span class="fn">shell</span>: true
+  <span class="fn">file</span>: true
+  <span class="fn">web</span>: true
+  <span class="fn">browser</span>: false            <span class="cmt"># 需要 Chrome</span>
+  <span class="fn">git</span>: true
+  <span class="fn">search</span>: true
+  <span class="fn">plugins</span>: false
+  <span class="fn">plugins_dir</span>: ~/.issgo/plugins
+
+<span class="kw">agent:</span>
+  <span class="fn">max_steps</span>: 30             <span class="cmt"># 单次最大工具调用次数</span>
+  <span class="fn">allow_approve</span>: true      <span class="cmt"># 危险操作前确认</span>
+  <span class="fn">verbose</span>: false
+  <span class="fn">streaming</span>: true
+  <span class="fn">reflector</span>: true          <span class="cmt"># 自反思模块</span>
+  <span class="fn">max_retries</span>: 3
+  <span class="fn">session_dir</span>: ~/.issgo/sessions
+  <span class="fn">max_session_age</span>: 168h
+
+<span class="kw">server:</span>
+  <span class="fn">enabled</span>: false
+  <span class="fn">host</span>: 127.0.0.1
+  <span class="fn">port</span>: 8420
+  <span class="fn">ws</span>: true                 <span class="cmt"># WebSocket 支持</span>
+  <span class="fn">auth_token</span>: ""          <span class="cmt"># API 认证令牌</span></code></pre>
+        </div>
+      </div>
+
+      <div>
+        <h3 style="color:#fff;font-size:1rem;margin-bottom:12px;">配置加载优先级</h3>
+        <div class="code-block" style="margin-bottom:24px;">
+          <pre><code>环境变量 (ISSGO_*)  
+    ↓  覆盖  
+./.issgo.yaml  
+    ↓  覆盖  
+~/.issgo.yaml  
+    ↓  回退  
+内置默认值</code></pre>
+        </div>
+
+        <h3 style="color:#fff;font-size:1rem;margin-bottom:12px;">环境变量</h3>
+        <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+          <tr style="border-bottom:1px solid var(--border);">
+            <th style="text-align:left;padding:8px;color:var(--text-dim);">环境变量</th>
+            <th style="text-align:left;padding:8px;color:var(--text-dim);">对应配置</th>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;"><code>ISSGO_LLM_API_KEY</code></td>
+            <td style="padding:8px;color:var(--text-muted);">llm.api_key</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;"><code>ISSGO_LLM_MODEL</code></td>
+            <td style="padding:8px;color:var(--text-muted);">llm.model</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;"><code>ISSGO_LLM_PROVIDER</code></td>
+            <td style="padding:8px;color:var(--text-muted);">llm.provider</td>
+          </tr>
+          <tr style="border-bottom:1px solid var(--border);">
+            <td style="padding:8px;"><code>ISSGO_LLM_BASE_URL</code></td>
+            <td style="padding:8px;color:var(--text-muted);">llm.base_url</td>
+          </tr>
+        </table>
+
+        <h3 style="color:#fff;font-size:1rem;margin:24px 0 12px;">Multi-Profile 示例</h3>
+        <div class="code-block">
+          <div class="code-block-header">
+            <span class="code-block-label">.issgo.yaml (profiles)</span>
+            <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+          </div>
+          <pre><code><span class="kw">profiles:</span>
+  - <span class="fn">name</span>: deepseek
+    <span class="fn">provider</span>: deepseek
+    <span class="fn">model</span>: deepseek-chat
+  - <span class="fn">name</span>: openai
+    <span class="fn">provider</span>: openai
+    <span class="fn">model</span>: gpt-4o
+  - <span class="fn">name</span>: local
+    <span class="fn">provider</span>: ollama
+    <span class="fn">model</span>: qwen2.5:14b
+    <span class="fn">base_url</span>: http://localhost:11434/v1
+
+<span class="kw">active:</span> deepseek
+
+<span class="cmt"># 命令行切换：issgo run -p openai "..."</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ LLM PROVIDERS ═══════════════════ -->
+<section id="llm" style="background:rgba(137,180,250,0.02);">
+  <div class="section-inner">
+    <span class="section-label">LLM Providers</span>
+    <h2 class="section-title">支持的 LLM 提供商</h2>
+    <p class="section-desc">任何兼容 OpenAI Chat Completions API 的服务都可直接使用。以下是已测试的提供商。</p>
+
+    <div style="overflow-x:auto;">
+      <table class="provider-table">
+        <thead>
+          <tr>
+            <th>服务</th>
+            <th>Provider</th>
+            <th>base_url</th>
+            <th>推荐模型</th>
+            <th>特性</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>DeepSeek</strong> <span class="badge green">默认</span></td>
+            <td><code>deepseek</code></td>
+            <td><code>https://api.deepseek.com</code></td>
+            <td>deepseek-chat / deepseek-reasoner</td>
+            <td><span class="badge blue">Streaming</span> <span class="badge purple">Tools</span></td>
+          </tr>
+          <tr>
+            <td><strong>OpenAI</strong></td>
+            <td><code>openai</code></td>
+            <td><code>https://api.openai.com/v1</code></td>
+            <td>gpt-4o / gpt-4o-mini</td>
+            <td><span class="badge blue">Streaming</span> <span class="badge purple">Tools</span></td>
+          </tr>
+          <tr>
+            <td><strong>Ollama</strong> (本地)</td>
+            <td><code>ollama</code></td>
+            <td><code>http://localhost:11434/v1</code></td>
+            <td>llama3 / qwen2.5 / mistral</td>
+            <td><span class="badge blue">Streaming</span> <span class="badge purple">Tools*</span></td>
+          </tr>
+          <tr>
+            <td><strong>Groq</strong></td>
+            <td><code>custom</code></td>
+            <td><code>https://api.groq.com/openai/v1</code></td>
+            <td>llama-3.1-70b-versatile</td>
+            <td><span class="badge blue">Streaming</span> <span class="badge purple">Tools</span></td>
+          </tr>
+          <tr>
+            <td><strong>vLLM</strong> (自部署)</td>
+            <td><code>custom</code></td>
+            <td><code>http://your-host:8000/v1</code></td>
+            <td>任意模型</td>
+            <td><span class="badge blue">Streaming</span> <span class="badge purple">Tools*</span></td>
+          </tr>
+          <tr>
+            <td><strong>自定义</strong></td>
+            <td><code>custom</code></td>
+            <td>任意兼容地址</td>
+            <td>任意兼容模型</td>
+            <td>取决于服务</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="color:var(--text-dim);font-size:0.8rem;margin-top:8px;">* 本地模型需要支持 Function Calling / Tool Use 才能使用全部功能。</p>
+  </div>
+</section>
+
+<!-- ═══════════════════ EXAMPLES ═══════════════════ -->
+<section id="examples">
+  <div class="section-inner">
+    <span class="section-label">Examples</span>
+    <h2 class="section-title">使用示例</h2>
+    <div class="grid-2">
+      <div class="card">
+        <h3 style="color:var(--accent);">代码分析</h3>
+        <div class="code-block" style="margin-top:12px;">
+          <pre><code><span class="cmt"># 查找未使用的导入</span>
+issgo run <span class="str">"检查所有 Go 文件的 import 是否有未使用的"</span>
+
+<span class="cmt"># 统计代码量</span>
+issgo run <span class="str">"统计代码行数，按语言分类，输出 Markdown 表格"</span>
+
+<span class="cmt"># 代码审查</span>
+issgo run <span class="str">"审查 cmd/ 下代码，检查错误处理是否完整"</span></code></pre>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent2);">文件批处理</h3>
+        <div class="code-block" style="margin-top:12px;">
+          <pre><code><span class="cmt"># 格式转换</span>
+issgo run <span class="str">"将 data/ 下所有 CSV 转为 JSON，保持原文件名"</span>
+
+<span class="cmt"># 批量重命名</span>
+issgo run <span class="str">"所有 .jpg 重命名为小写，空格改下划线"</span>
+
+<span class="cmt"># 查找替换</span>
+issgo run <span class="str">"在 src/ 下 .ts 文件中，将 require() 改为 import"</span></code></pre>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent3);">自动化工作流</h3>
+        <div class="code-block" style="margin-top:12px;">
+          <pre><code><span class="cmt"># 系统健康报告</span>
+issgo run <span class="str">"检查磁盘使用率、内存和 CPU 负载，生成报告"</span>
+
+<span class="cmt"># Git 分支操作</span>
+issgo run <span class="str">"创建新分支 feature/auth，从 main 创建并推送"</span>
+
+<span class="cmt"># 日志分析</span>
+issgo run <span class="str">"分析 nginx access.log，Top 10 IP 和状态码分布"</span></code></pre>
+        </div>
+      </div>
+      <div class="card">
+        <h3 style="color:var(--accent4);">Watch 模式</h3>
+        <div class="code-block" style="margin-top:12px;">
+          <pre><code><span class="cmt"># 自动测试</span>
+issgo watch . --on-change <span class="str">"运行 go test ./... 并修复失败的测试"</span>
+
+<span class="cmt"># 自动格式化</span>
+issgo watch ./src --on-change <span class="str">"gofmt 格式化所有修改过的 Go 文件"</span> --debounce 2000
+
+<span class="cmt"># 自动文档</span>
+issgo watch ./api --on-change <span class="str">"根据代码变化更新 API.md"</span></code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ API ═══════════════════ -->
+<section id="api" style="background:rgba(137,180,250,0.02);">
+  <div class="section-inner">
+    <span class="section-label">API Server</span>
+    <h2 class="section-title">HTTP API 接口</h2>
+    <p class="section-desc">通过 <code>issgo serve</code> 启动 HTTP API 服务器，支持 REST + SSE 流式传输，可集成到任何应用中。</p>
+
+    <div style="overflow-x:auto;">
+      <table class="endpoint-table">
+        <thead>
+          <tr>
+            <th>方法</th>
+            <th>路径</th>
+            <th>描述</th>
+            <th>请求体</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><span class="method-path">/api/v1/health</span></td>
+            <td>健康检查，返回版本号</td>
+            <td style="color:var(--text-dim);">—</td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><span class="method-path">/api/v1/run</span></td>
+            <td>执行 AI 任务，同步返回结果</td>
+            <td><code>{"task": "你的任务描述"}</code></td>
+          </tr>
+          <tr>
+            <td><span class="method post">POST</span></td>
+            <td><span class="method-path">/api/v1/stream</span></td>
+            <td>执行 AI 任务，SSE 流式传输</td>
+            <td><code>{"task": "你的任务描述"}</code></td>
+          </tr>
+          <tr>
+            <td><span class="method get">GET</span></td>
+            <td><span class="method-path">/api/v1/tools</span></td>
+            <td>列出所有可用工具</td>
+            <td style="color:var(--text-dim);">—</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3 style="color:#fff;margin:32px 0 12px;font-size:1rem;">快速示例</h3>
+    <div class="code-block">
+      <div class="code-block-header">
+        <span class="code-block-label">curl 调用 API</span>
+        <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
+      </div>
+      <pre><code><span class="cmt"># 启动服务器</span>
+issgo serve --port 8420
+
+<span class="cmt"># 健康检查</span>
+curl http://localhost:8420/api/v1/health
+<span class="dim"># → {"status":"ok","version":"v2026.06.30"}</span>
+
+<span class="cmt"># 执行任务</span>
+curl -X POST http://localhost:8420/api/v1/run \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"task":"统计项目代码行数"}'</span>
+<span class="dim"># → {"success":true,"result":"..."}</span>
+
+<span class="cmt"># SSE 流式传输</span>
+curl -X POST http://localhost:8420/api/v1/stream \
+  -H <span class="str">"Content-Type: application/json"</span> \
+  -d <span class="str">'{"task":"列出所有 Go 文件"}'</span>
+
+<span class="cmt"># 带认证令牌</span>
+issgo serve --port 8420
+<span class="cmt"># 在 .issgo.yaml 中设置 server.auth_token</span>
+curl -H <span class="str">"Authorization: Bearer your-token"</span> \
+  http://localhost:8420/api/v1/run</code></pre>
+    </div>
+
+    <div style="margin-top:16px;padding:16px 20px;background:var(--bg-card);border-radius:var(--radius);border:1px solid var(--border);">
+      <strong style="color:var(--accent3);">中间件支持：</strong>
+      <span style="color:var(--text-muted);font-size:0.9rem;">日志记录 (LoggingMiddleware) · CORS 跨域 (CORSMiddleware) · Bearer Token 认证 (AuthMiddleware) — 全部内置，无需额外配置。</span>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ FAQ ═══════════════════ -->
+<section id="faq">
+  <div class="section-inner">
+    <span class="section-label">FAQ</span>
+    <h2 class="section-title">常见问题</h2>
+
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">如何安全地存储 API Key？</div>
+      <div class="faq-a">推荐使用环境变量 <code>export ISSGO_LLM_API_KEY="sk-xxxxxxxx"</code>，添加到 ~/.bashrc 或 ~/.zshrc。也可以放在 .issgo.yaml 中，但注意不要将该文件提交到 Git 仓库。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">max_steps 应该设置多少？</div>
+      <div class="faq-a">默认 30 步对大多数任务足够。简单任务通常 5-10 步即可完成。复杂的多阶段任务可以调大到 50。设置太小可能导致任务未完成就被截断。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">shell 工具有哪些安全限制？</div>
+      <div class="faq-a">两层安全机制：① 静态分析 — 自动拦截 rm -rf /、fork bomb、dd、mkfs 等危险模式；② LLM 动态审查 — 对于警告级别命令（如 rm、git push --force 等），会请求 LLM 评估是否安全。同时有 120s 超时保护。建议开启 allow_approve: true 在执行危险命令前请求确认。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">支持哪些操作系统？</div>
+      <div class="faq-a">Linux、macOS、Windows（通过 Git Bash 或 WSL）。file 和 shell 工具在所有平台可用；browser 工具需要额外安装 Chrome/Chromium。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">可以使用本地模型吗？</div>
+      <div class="faq-a">可以。运行 Ollama 或其他兼容服务后，将配置指向本地地址即可：<code>base_url: http://localhost:11434/v1</code>，model 设置为 qwen2.5:14b 等。注意本地模型需要支持 Function Calling。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">如何调试 LLM 调用过程？</div>
+      <div class="faq-a">配置 <code>agent.verbose: true</code> 或加 <code>-v</code> 参数：<code>issgo run "任务" -v</code>。这会在终端打印完整 Prompt、LLM 响应和 Tool 调用详情。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Reflector 是什么？需要开启吗？</div>
+      <div class="faq-a">Reflector（自反思模块）在 Agent 完成任务后分析执行过程，判断是否需要重新规划（REPLAN）、继续执行（CONTINUE）、已完成（COMPLETE）或阻塞（BLOCKED）。建议开启，可有效避免陷入无效循环。默认开启。</div>
+    </div>
+    <div class="faq-item">
+      <div class="faq-q" onclick="this.parentElement.classList.toggle('open')">Session 是如何工作的？</div>
+      <div class="faq-a">每次对话自动保存为 JSON 文件到 <code>~/.issgo/sessions/</code>，包含任务描述、完整对话历史、状态和最终结果。Session 默认保留 168 小时（7 天），过期自动清理。可用于恢复中断的任务或审计历史操作。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ TECH STACK ═══════════════════ -->
+<section id="tech" style="background:rgba(137,180,250,0.02);">
+  <div class="section-inner">
+    <span class="section-label">Tech Stack</span>
+    <h2 class="section-title">技术栈</h2>
+    <div class="grid-4">
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🐹</div>
+        <h3>Go 1.24</h3>
+        <p>核心语言，高性能、静态编译、单二进制分发</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🐍</div>
+        <h3>Python 3.8+</h3>
+        <p>PyPI 分发包装器，自动下载对应平台二进制</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🐍</div>
+        <h3>Cobra + Viper</h3>
+        <p>CLI 框架 + 配置管理，行业标准组合</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">⚡</div>
+        <h3>Zap Logger</h3>
+        <p>高性能结构化日志，零内存分配</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🤖</div>
+        <h3>go-openai</h3>
+        <p>OpenAI 兼容客户端，支持所有 LLM 提供商</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🌐</div>
+        <h3>Resty v2</h3>
+        <p>HTTP 客户端，自动重定向、重试、超时</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">🖥️</div>
+        <h3>chromedp</h3>
+        <p>Chrome DevTools Protocol，纯 Go 浏览器自动化</p>
+      </div>
+      <div class="card" style="text-align:center;">
+        <div style="font-size:2rem;margin-bottom:8px;">👁️</div>
+        <h3>fsnotify</h3>
+        <p>跨平台文件系统事件监听，驱动 watch 模式</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════ FOOTER ═══════════════════ -->
+<footer>
+  <div class="footer-grid">
+    <div>
+      <h4>IssGo</h4>
+      <p style="color:var(--text-dim);line-height:1.8;">
+        AI Agent + 自动化 CLI 工具<br>
+        用自然语言驱动自动化<br>
+        Made with ❤️ by the IssGo team
+      </p>
+    </div>
+    <div>
+      <h4>文档</h4>
+      <a href="#install">安装指南</a>
+      <a href="#quickstart">快速开始</a>
+      <a href="#commands">命令参考</a>
+      <a href="#config">配置参考</a>
+      <a href="#api">API 接口</a>
+    </div>
+    <div>
+      <h4>社区</h4>
+      <a href="https://github.com/issgo/issgo" target="_blank">GitHub</a>
+      <a href="https://github.com/issgo/issgo/issues" target="_blank">Issue Tracker</a>
+      <a href="https://github.com/issgo/issgo/discussions" target="_blank">Discussions</a>
+      <a href="https://github.com/issgo/issgo/blob/main/.github/CONTRIBUTING.md" target="_blank">贡献指南</a>
+    </div>
+    <div>
+      <h4>更多</h4>
+      <a href="https://github.com/issgo/issgo/blob/main/LICENSE" target="_blank">MIT License</a>
+      <a href="https://github.com/issgo/issgo/blob/main/.github/SECURITY.md" target="_blank">安全政策</a>
+      <a href="https://github.com/issgo/issgo/releases" target="_blank">Release Notes</a>
+    </div>
+  </div>
+  <div class="footer-bottom">
+    <p>© 2026 IssGo Authors. Released under the MIT License. <br style="display:none;">Not affiliated with DeepSeek, OpenAI, or any LLM provider.</p>
+  </div>
+</footer>
+
+<!-- ═══════════════════ SCRIPTS ═══════════════════ -->
+<script>
+// Tab switching
+function switchTab(evt, tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  evt.target.classList.add('active');
+  document.getElementById(tabId).classList.add('active');
+}
+
+// Copy code
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  const text = pre.textContent || pre.innerText || '';
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }).catch(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Failed';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  });
+}
+
+// Smooth scroll for nav links
+document.querySelectorAll('nav a[href^="#"]').forEach(link => {
+  link.addEventListener('click', function(e) {
+    e.preventDefault();
+    const target = document.querySelector(this.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
+// Intersection Observer for scroll-triggered animations
+const observerOptions = { threshold: 0.1, rootMargin: '0px 0px -50px 0px' };
+const observer = new IntersectionObserver((entries) => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      entry.target.style.opacity = '1';
+      entry.target.style.transform = 'translateY(0)';
+    }
+  });
+}, observerOptions);
+
+document.querySelectorAll('.card, .feature-card, .tool-card, .cmd-row, .stat, .arch-step, .react-node').forEach(el => {
+  el.style.opacity = '0';
+  el.style.transform = 'translateY(20px)';
+  el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+  observer.observe(el);
+});
+
+// Initialize first visible elements
+setTimeout(() => {
+  document.querySelectorAll('.card, .feature-card, .tool-card, .cmd-row, .stat, .arch-step, .react-node').forEach(el => {
+    el.style.opacity = '1';
+    el.style.transform = 'translateY(0)';
+  });
+}, 100);
+</script>
+
+</body>
+</html>
