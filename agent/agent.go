@@ -25,6 +25,7 @@ type Agent struct {
 	planner   *Planner
 	reflector *Reflector
 	safety    *Safety
+	sessions  *SessionManager
 }
 
 func New(cfg *config.Config) *Agent {
@@ -52,6 +53,8 @@ func New(cfg *config.Config) *Agent {
 	executor := NewExecutor(client, registry, memory, execOpts)
 	planner := NewPlanner(client, registry.List())
 
+	sessions := NewSessionManager(cfg.Agent.SessionDir)
+
 	return &Agent{
 		cfg:       cfg,
 		client:    client,
@@ -61,6 +64,7 @@ func New(cfg *config.Config) *Agent {
 		planner:   planner,
 		reflector: reflector,
 		safety:    safety,
+		sessions:  sessions,
 	}
 }
 
@@ -96,11 +100,45 @@ func (a *Agent) RunWithSignalTrap(ctx context.Context, task string) (string, err
 
 // ─── Accessors ─────────────────────────────────────────────────
 
-func (a *Agent) Memory() *Memory         { return a.memory }
-func (a *Agent) Client() *llm.Client     { return a.client }
+func (a *Agent) Memory() *Memory           { return a.memory }
+func (a *Agent) Client() *llm.Client       { return a.client }
 func (a *Agent) Registry() *tools.Registry { return a.registry }
-func (a *Agent) Config() *config.Config  { return a.cfg }
-func (a *Agent) Planner() *Planner       { return a.planner }
+func (a *Agent) Config() *config.Config    { return a.cfg }
+func (a *Agent) Planner() *Planner         { return a.planner }
+
+// SetProgressCallback sets a function to receive progress events during execution.
+func (a *Agent) SetProgressCallback(fn ProgressFunc) {
+	a.executor.options.OnProgress = fn
+}
 
 // ListTools returns the names of registered tools (implements server.AgentRunner).
 func (a *Agent) ListTools() []string { return a.registry.ToolNames() }
+
+// ─── Session management ───────────────────────────────────────
+
+// SaveSession saves the current conversation as a named session.
+func (a *Agent) SaveSession(name string) error {
+	s := a.sessions.Create(name, a.memory)
+	a.sessions.Save(s)
+	return nil
+}
+
+// LoadSession restores a named session into memory.
+func (a *Agent) LoadSession(id string) error {
+	s, err := a.sessions.Load(id)
+	if err != nil {
+		return err
+	}
+	a.memory.FromSnapshot(s.Memory)
+	return nil
+}
+
+// ListSessions returns all saved session summaries.
+func (a *Agent) ListSessions() ([]*Session, error) {
+	return a.sessions.List()
+}
+
+// ResetSession clears memory and starts a fresh conversation.
+func (a *Agent) ResetSession() {
+	a.memory.Clear()
+}

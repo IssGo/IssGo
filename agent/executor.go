@@ -18,6 +18,18 @@ import (
 
 // ─── Executor ──────────────────────────────────────────────────
 
+// ProgressEvent describes a single step in task execution.
+type ProgressEvent struct {
+	Step     int    `json:"step"`
+	Action   string `json:"action"` // "tool_call", "tool_result", "done", "error", "max_steps"
+	Tool     string `json:"tool,omitempty"`
+	Details  string `json:"details,omitempty"`
+	MaxSteps int    `json:"max_steps"`
+}
+
+// ProgressFunc is called at each execution step.
+type ProgressFunc func(ProgressEvent)
+
 type Executor struct {
 	client   *llm.Client
 	registry *tools.Registry
@@ -33,6 +45,7 @@ type ExecutorOptions struct {
 	AllowApprove bool
 	Reflector    *Reflector
 	Safety       *Safety
+	OnProgress   ProgressFunc
 }
 
 func NewExecutor(client *llm.Client, registry *tools.Registry, memory *Memory, opts ExecutorOptions) *Executor {
@@ -98,6 +111,20 @@ func (e *Executor) Run(ctx context.Context, task string) (string, error) {
 			}
 
 			for _, tc := range choice.ToolCalls {
+				// Safety pre-check for shell commands BEFORE execution
+				if tc.Name == "shell" && e.options.AllowApprove && e.options.Safety != nil {
+					cmd, _ := tools.MustGetArg(json.RawMessage(tc.Arguments), "command")
+					if cmd != "" {
+						if blocked := e.options.Safety.EvaluateCommand(ctx, cmd, task); blocked {
+							e.memory.AddToolResult(tc.Name, "BLOCKED: Command was evaluated as unsafe")
+							if e.options.Verbose {
+								fmt.Printf("  [result:%s] ✗ BLOCKED by safety check\n", tc.Name)
+							}
+							continue
+						}
+					}
+				}
+
 				result := e.registry.Execute(ctx, tc.Name, json.RawMessage(tc.Arguments))
 
 				output := result.Output
@@ -118,14 +145,18 @@ func (e *Executor) Run(ctx context.Context, task string) (string, error) {
 
 				e.memory.AddToolResult(tc.Name, output)
 
-				// Safety check on shell commands
-				if tc.Name == "shell" && e.options.AllowApprove {
-					cmd, _ := tools.MustGetArg(json.RawMessage(tc.Arguments), "command")
-					if cmd != "" && e.options.Safety != nil {
-						if blocked := e.options.Safety.EvaluateCommand(ctx, cmd, task); blocked {
-							e.memory.AddToolResult(tc.Name, "BLOCKED: Command was evaluated as unsafe")
-						}
+				if e.options.OnProgress != nil {
+					status := "ok"
+					if !result.Success {
+						status = "error"
 					}
+					e.options.OnProgress(ProgressEvent{
+						Step:     step + 1,
+						MaxSteps: e.options.MaxSteps,
+						Action:   "tool_result",
+						Tool:     tc.Name,
+						Details:  status,
+					})
 				}
 			}
 			continue
@@ -164,11 +195,11 @@ func (e *Executor) buildSystemPrompt() string {
 	}
 
 	return prompts.RenderSystem(prompts.SystemVars{
-		OS:                runtime.GOOS,
-		Arch:              runtime.GOARCH,
-		WorkingDir:        ".",
-		CurrentTime:       time.Now().Format(time.RFC3339),
-		Shell:             "bash",
-		ToolsDescription:  strings.Join(toolDescs, "\n"),
+		OS:               runtime.GOOS,
+		Arch:             runtime.GOARCH,
+		WorkingDir:       ".",
+		CurrentTime:      time.Now().Format(time.RFC3339),
+		Shell:            "bash",
+		ToolsDescription: strings.Join(toolDescs, "\n"),
 	})
 }

@@ -11,7 +11,7 @@ var configCmd = &cobra.Command{
 	Use:   "config",
 	Short: "Show or edit configuration",
 	Long:  `Show current configuration values or list available profiles.`,
-	RunE: runConfig,
+	RunE:  runConfig,
 }
 
 var configShowAll bool

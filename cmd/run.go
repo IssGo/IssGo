@@ -28,13 +28,15 @@ Examples:
 }
 
 var (
-	runVerbose bool
+	runVerbose   bool
 	runNoSpinner bool
+	runNoCache   bool
 )
 
 func init() {
 	runCmd.Flags().BoolVarP(&runVerbose, "verbose", "v", false, "Verbose output (show all LLM and tool interactions)")
 	runCmd.Flags().BoolVar(&runNoSpinner, "no-spinner", false, "Disable the progress spinner")
+	runCmd.Flags().BoolVar(&runNoCache, "no-cache", false, "Disable LLM response cache")
 	rootCmd.AddCommand(runCmd)
 }
 
@@ -64,6 +66,9 @@ func runTask(cmd *cobra.Command, args []string) error {
 	fmt.Printf("\n%s %s\n\n", bold("Task:"), cyan(task))
 
 	ag := agent.New(cfg)
+	if runNoCache {
+		ag.Client().SetNoCache(true)
+	}
 
 	var sp *spinner.Spinner
 	if !runNoSpinner {

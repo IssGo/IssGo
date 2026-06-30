@@ -11,9 +11,9 @@ import (
 )
 
 type Server struct {
-	cfg    *config.Config
-	agent  AgentRunner
-	srv    *http.Server
+	cfg   *config.Config
+	agent AgentRunner
+	srv   *http.Server
 }
 
 // AgentRunner is the interface the server needs from the agent.

@@ -150,6 +150,7 @@ issgo run "从 package.json 中提取所有依赖名称和版本"
 |------|------|
 | `--verbose` / `-v` | 输出详细执行日志（包含每一步的完整 LLM 响应） |
 | `--no-spinner` | 禁用进度动画 |
+| `--no-cache` | 跳过 LLM 响应缓存，强制实时调用 |
 | `--profile` / `-p` | 使用指定的 profile 配置 |
 
 ### issgo watch
@@ -183,7 +184,8 @@ issgo chat
 #   /clear        — 清空对话记忆
 #   /history      — 查看对话历史
 #   /save <name>  — 保存会话
-#   /load <name>  — 加载会话
+#   /load <id>    — 加载会话
+#   /sessions     — 列出已保存会话
 ```
 
 ### issgo serve
@@ -439,7 +441,7 @@ IssGo 内置 7 个工具，可在 `.issgo.yaml` 中独立开关。
 
 ### shell — Shell 命令
 
-通过 `bash -c` 执行任意 Shell 命令，120 秒超时自动终止。
+通过 `bash -c` 执行任意 Shell 命令，120 秒超时自动终止。支持 `stdin` 传入管道数据。
 
 ```bash
 # 示例：LLM 会调用 shell 工具执行
@@ -448,7 +450,7 @@ grep -rn "TODO" --include="*.go" .
 cat /etc/os-release
 ```
 
-**安全提示：** 在生产环境中使用前，请仔细审查 LLM 生成的命令。配置中设置 `allow_approve: true` 可在执行危险操作前请求用户确认。
+**安全提示：** 在生产环境中使用前，请仔细审查 LLM 生成的命令。配置中设置 `allow_approve: true` 可在执行危险操作前请求用户确认。安全审查现在在命令执行**之前**运行，防止危险命令真正执行。
 
 ### web — HTTP 请求
 
@@ -479,7 +481,7 @@ cat /etc/os-release
 
 ### git — Git 操作
 
-支持常用 Git 子命令：`status`、`diff`、`log`、`branch`、`add`、`commit`、`pull`、`push`、`checkout`、`stash`、`tag` 等。
+支持常用 Git 子命令：`status`、`diff`、`log`、`branch`、`add`、`commit`、`pull`、`push`、`checkout`、`stash`、`tag`、`remote`、`show`、`blame`、`describe`、`rev-parse`。
 
 ```json
 {

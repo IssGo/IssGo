@@ -10,16 +10,18 @@ import (
 
 type GitTool struct{}
 
-func (g *GitTool) Name() string        { return "git" }
-func (g *GitTool) Description() string { return "Execute git operations: status, diff, log, branch, commit, etc." }
+func (g *GitTool) Name() string { return "git" }
+func (g *GitTool) Description() string {
+	return "Execute git operations: status, diff, log, branch, commit, etc."
+}
 
 func (g *GitTool) Schema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"command": map[string]any{
-				"type": "string",
-				"enum": []string{"status", "diff", "log", "branch", "add", "commit", "pull", "push", "checkout", "stash", "tag"},
+				"type":        "string",
+				"enum":        []string{"status", "diff", "log", "branch", "add", "commit", "pull", "push", "checkout", "stash", "tag", "remote", "show", "blame", "describe", "rev-parse"},
 				"description": "Git subcommand.",
 			},
 			"repo_path": map[string]any{"type": "string", "description": "Path to git repo (default: cwd)."},

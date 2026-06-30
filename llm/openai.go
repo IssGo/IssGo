@@ -24,7 +24,7 @@ func NewOpenAIProvider(cfg *config.Config) *OpenAIProvider {
 	}
 }
 
-func (p *OpenAIProvider) Name() string           { return "openai" }
+func (p *OpenAIProvider) Name() string            { return "openai" }
 func (p *OpenAIProvider) SupportsStreaming() bool { return true }
 func (p *OpenAIProvider) SupportsTools() bool     { return true }
 

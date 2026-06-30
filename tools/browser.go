@@ -12,8 +12,10 @@ import (
 
 type BrowserTool struct{}
 
-func (b *BrowserTool) Name() string        { return "browser" }
-func (b *BrowserTool) Description() string { return "Headless browser for navigation, screenshots, content extraction, and JS execution." }
+func (b *BrowserTool) Name() string { return "browser" }
+func (b *BrowserTool) Description() string {
+	return "Headless browser for navigation, screenshots, content extraction, and JS execution."
+}
 
 func (b *BrowserTool) Schema() any {
 	return map[string]any{

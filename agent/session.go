@@ -14,14 +14,14 @@ import (
 // ─── Session ───────────────────────────────────────────────────
 
 type Session struct {
-	ID        string              `json:"id"`
-	Task      string              `json:"task"`
-	CreatedAt time.Time           `json:"created_at"`
-	UpdatedAt time.Time           `json:"updated_at"`
-	Memory    *MemorySnapshot     `json:"memory"`
-	Status    string              `json:"status"` // running, completed, failed, interrupted
-	Result    string              `json:"result,omitempty"`
-	Meta      map[string]string   `json:"meta,omitempty"`
+	ID        string            `json:"id"`
+	Task      string            `json:"task"`
+	CreatedAt time.Time         `json:"created_at"`
+	UpdatedAt time.Time         `json:"updated_at"`
+	Memory    *MemorySnapshot   `json:"memory"`
+	Status    string            `json:"status"` // running, completed, failed, interrupted
+	Result    string            `json:"result,omitempty"`
+	Meta      map[string]string `json:"meta,omitempty"`
 }
 
 type SessionManager struct {
@@ -49,8 +49,13 @@ func (sm *SessionManager) Create(task string, memory *Memory) *Session {
 
 func (sm *SessionManager) Save(s *Session) {
 	s.UpdatedAt = time.Now()
-	data, _ := json.MarshalIndent(s, "", "  ")
-	_ = os.WriteFile(sm.path(s.ID), data, 0o600)
+	data, err := json.MarshalIndent(s, "", "  ")
+	if err != nil {
+		return
+	}
+	if err := os.WriteFile(sm.path(s.ID), data, 0o600); err != nil {
+		return
+	}
 }
 
 func (sm *SessionManager) Load(id string) (*Session, error) {

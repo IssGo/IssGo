@@ -8,20 +8,20 @@ import (
 )
 
 type Bar struct {
-	total    int64
-	current  int64
-	width    int
-	prefix   string
-	complete rune
+	total      int64
+	current    int64
+	width      int
+	prefix     string
+	complete   rune
 	incomplete rune
 }
 
 func NewBar(total int64, prefix string) *Bar {
 	return &Bar{
-		total:    total,
-		width:    40,
-		prefix:   prefix,
-		complete: '█',
+		total:      total,
+		width:      40,
+		prefix:     prefix,
+		complete:   '█',
 		incomplete: '░',
 	}
 }

@@ -9,17 +9,17 @@ import (
 	"sync"
 
 	"github.com/issgo/issgo/config"
-	"github.com/issgo/issgo/llm"
 	"github.com/issgo/issgo/internal/logger"
+	"github.com/issgo/issgo/llm"
 )
 
 // ─── Types ─────────────────────────────────────────────────────
 
 type Result struct {
-	Success bool            `json:"success"`
-	Output  string          `json:"output"`
-	Error   string          `json:"error,omitempty"`
-	Meta    map[string]any  `json:"meta,omitempty"`
+	Success bool           `json:"success"`
+	Output  string         `json:"output"`
+	Error   string         `json:"error,omitempty"`
+	Meta    map[string]any `json:"meta,omitempty"`
 }
 
 type Tool interface {

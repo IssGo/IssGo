@@ -27,7 +27,8 @@ Type /exit, /quit, or Ctrl+C to exit.
 Type /clear to reset conversation memory.
 Type /history to show conversation history.
 Type /save <name> to save the session.
-Type /load <name> to load a session.`,
+Type /load <id> to load a session.
+Type /sessions to list saved sessions.`,
 	RunE: runChat,
 }
 
@@ -70,21 +71,69 @@ func runChat(cmd *cobra.Command, args []string) error {
 
 		// Handle commands
 		if strings.HasPrefix(input, "/") {
-			switch {
-			case input == "/exit" || input == "/quit":
+			parts := strings.SplitN(input, " ", 2)
+			cmdName := parts[0]
+			cmdArg := ""
+			if len(parts) > 1 {
+				cmdArg = strings.TrimSpace(parts[1])
+			}
+			switch cmdName {
+			case "/exit", "/quit":
 				fmt.Println("Goodbye!")
 				return nil
-			case input == "/clear":
-				ag.Memory().Clear()
+			case "/clear":
+				ag.ResetSession()
 				fmt.Println("Memory cleared.")
 				continue
-			case input == "/history":
+			case "/history":
 				for _, m := range ag.Memory().History() {
-					fmt.Printf("  [%s] %s\n", m.Role, m.Content)
+					content := m.Content
+					if len(content) > 120 {
+						content = content[:120] + "..."
+					}
+					fmt.Printf("  [%s] %s\n", m.Role, content)
+				}
+				continue
+			case "/save":
+				if cmdArg == "" {
+					fmt.Println("Usage: /save <name>")
+					continue
+				}
+				if err := ag.SaveSession(cmdArg); err != nil {
+					fmt.Printf("  Save failed: %v\n", err)
+				} else {
+					fmt.Printf("  Session saved as %q.\n", cmdArg)
+				}
+				continue
+			case "/load":
+				if cmdArg == "" {
+					fmt.Println("Usage: /load <id>")
+					continue
+				}
+				if err := ag.LoadSession(cmdArg); err != nil {
+					fmt.Printf("  Load failed: %v\n", err)
+				} else {
+					fmt.Printf("  Session %q loaded.\n", cmdArg)
+				}
+				continue
+			case "/sessions":
+				list, err := ag.ListSessions()
+				if err != nil {
+					fmt.Printf("  Error: %v\n", err)
+					continue
+				}
+				if len(list) == 0 {
+					fmt.Println("  No saved sessions.")
+				} else {
+					fmt.Println("  Saved sessions:")
+					for _, s := range list {
+						fmt.Printf("    %s — %s (%s)\n", s.ID, s.Task, s.UpdatedAt.Format("2006-01-02 15:04"))
+					}
 				}
 				continue
 			default:
 				fmt.Printf("Unknown command: %s\n", input)
+				fmt.Println("Available: /exit, /clear, /history, /save <name>, /load <id>, /sessions")
 				continue
 			}
 		}

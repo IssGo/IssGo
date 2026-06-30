@@ -14,9 +14,9 @@ import (
 // ─── Reflector ─────────────────────────────────────────────────
 
 type Reflector struct {
-	client  *llm.Client
-	ran     bool
-	verdict string // CONTINUE, REPLAN, COMPLETE, BLOCKED
+	client   *llm.Client
+	ran      bool
+	verdict  string // CONTINUE, REPLAN, COMPLETE, BLOCKED
 	feedback string
 }
 

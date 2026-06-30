@@ -12,18 +12,20 @@ import (
 
 type WebTool struct{}
 
-func (w *WebTool) Name() string        { return "web" }
-func (w *WebTool) Description() string { return "Make HTTP requests with full support for headers, body, and auth." }
+func (w *WebTool) Name() string { return "web" }
+func (w *WebTool) Description() string {
+	return "Make HTTP requests with full support for headers, body, and auth."
+}
 
 func (w *WebTool) Schema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"url":     map[string]any{"type": "string", "description": "The URL to request."},
-			"method":  map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}, "description": "HTTP method."},
-			"headers": map[string]any{"type": "object", "description": "HTTP headers."},
-			"body":    map[string]any{"type": "string", "description": "Request body."},
-			"auth":    map[string]any{"type": "object", "description": "Basic auth {username, password}."},
+			"url":         map[string]any{"type": "string", "description": "The URL to request."},
+			"method":      map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}, "description": "HTTP method."},
+			"headers":     map[string]any{"type": "object", "description": "HTTP headers."},
+			"body":        map[string]any{"type": "string", "description": "Request body."},
+			"auth":        map[string]any{"type": "object", "description": "Basic auth {username, password}."},
 			"timeout_sec": map[string]any{"type": "number", "description": "Timeout in seconds (default 30)."},
 		},
 		"required": []string{"url"},
@@ -31,11 +33,11 @@ func (w *WebTool) Schema() any {
 }
 
 type webArgs struct {
-	URL        string            `json:"url"`
-	Method     string            `json:"method"`
-	Headers    map[string]string `json:"headers"`
-	Body       string            `json:"body"`
-	Auth       struct {
+	URL     string            `json:"url"`
+	Method  string            `json:"method"`
+	Headers map[string]string `json:"headers"`
+	Body    string            `json:"body"`
+	Auth    struct {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	} `json:"auth"`

@@ -14,16 +14,18 @@ import (
 
 type FileTool struct{}
 
-func (f *FileTool) Name() string        { return "file" }
-func (f *FileTool) Description() string { return "Read, write, list, delete, copy, move, and inspect files/directories." }
+func (f *FileTool) Name() string { return "file" }
+func (f *FileTool) Description() string {
+	return "Read, write, list, delete, copy, move, and inspect files/directories."
+}
 
 func (f *FileTool) Schema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
 			"action": map[string]any{
-				"type": "string",
-				"enum": []string{"read", "write", "append", "list", "delete", "copy", "move", "exists", "stat", "mkdir"},
+				"type":        "string",
+				"enum":        []string{"read", "write", "append", "list", "delete", "copy", "move", "exists", "stat", "mkdir"},
 				"description": "File operation to perform.",
 			},
 			"path":     map[string]any{"type": "string", "description": "Target file or directory path."},

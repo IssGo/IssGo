@@ -7,7 +7,7 @@ import (
 )
 
 type Line struct {
-	Kind rune   // '+', '-', ' '
+	Kind rune // '+', '-', ' '
 	Text string
 	NumA int
 	NumB int

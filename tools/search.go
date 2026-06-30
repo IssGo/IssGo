@@ -12,18 +12,20 @@ import (
 
 type SearchTool struct{}
 
-func (s *SearchTool) Name() string        { return "search" }
-func (s *SearchTool) Description() string { return "Search file contents with regex, glob, or literal matching." }
+func (s *SearchTool) Name() string { return "search" }
+func (s *SearchTool) Description() string {
+	return "Search file contents with regex, glob, or literal matching."
+}
 
 func (s *SearchTool) Schema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"pattern":  map[string]any{"type": "string", "description": "Search pattern (regex by default)."},
-			"path":     map[string]any{"type": "string", "description": "Root directory to search."},
-			"glob":     map[string]any{"type": "string", "description": "File glob filter (e.g., *.go)."},
-			"literal":  map[string]any{"type": "boolean", "description": "Use literal string matching instead of regex."},
-			"max_depth": map[string]any{"type": "number", "description": "Max recursion depth (default 10)."},
+			"pattern":     map[string]any{"type": "string", "description": "Search pattern (regex by default)."},
+			"path":        map[string]any{"type": "string", "description": "Root directory to search."},
+			"glob":        map[string]any{"type": "string", "description": "File glob filter (e.g., *.go)."},
+			"literal":     map[string]any{"type": "boolean", "description": "Use literal string matching instead of regex."},
+			"max_depth":   map[string]any{"type": "number", "description": "Max recursion depth (default 10)."},
 			"max_results": map[string]any{"type": "number", "description": "Max matches to return (default 100)."},
 		},
 		"required": []string{"pattern"},

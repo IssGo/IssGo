@@ -17,6 +17,7 @@ type Client struct {
 	providers map[string]Provider
 	cache     *Cache
 	mu        sync.RWMutex
+	noCache   bool
 }
 
 func NewClient(cfg *config.Config) *Client {
@@ -75,7 +76,7 @@ func (c *Client) ChatWithCallbacks(ctx context.Context, system string, history [
 
 	// Try cache first (for non-streaming, no-tools calls)
 	cacheKey := ""
-	if len(tools) == 0 {
+	if !c.noCache && len(tools) == 0 {
 		cacheKey = c.cacheKey(system, history)
 		if entry, ok := c.cache.Get(cacheKey); ok {
 			logger.Log.Debugw("cache hit")
@@ -157,4 +158,11 @@ func (c *Client) InvalidateCache() {
 
 func (c *Client) CacheStats() (size, capacity int, ttl time.Duration) {
 	return c.cache.Len(), c.cache.Cap(), c.cache.TTL()
+}
+
+// SetNoCache enables or disables the response cache.
+func (c *Client) SetNoCache(v bool) {
+	c.mu.Lock()
+	c.noCache = v
+	c.mu.Unlock()
 }

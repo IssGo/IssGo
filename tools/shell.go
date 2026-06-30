@@ -15,8 +15,10 @@ import (
 
 type ShellTool struct{}
 
-func (s *ShellTool) Name() string        { return "shell" }
-func (s *ShellTool) Description() string { return "Execute shell commands with a 120s timeout. Returns stdout+stderr." }
+func (s *ShellTool) Name() string { return "shell" }
+func (s *ShellTool) Description() string {
+	return "Execute shell commands with a 120s timeout. Returns stdout+stderr."
+}
 
 func (s *ShellTool) Schema() any {
 	return map[string]any{
@@ -25,6 +27,7 @@ func (s *ShellTool) Schema() any {
 			"command":     map[string]any{"type": "string", "description": "Shell command to execute."},
 			"working_dir": map[string]any{"type": "string", "description": "Working directory."},
 			"env":         map[string]any{"type": "object", "description": "Environment variables."},
+			"stdin":       map[string]any{"type": "string", "description": "Data to pipe to command stdin."},
 			"timeout_sec": map[string]any{"type": "number", "description": "Override default timeout (max 120)."},
 		},
 		"required": []string{"command"},
@@ -35,6 +38,7 @@ type shellArgs struct {
 	Command    string            `json:"command"`
 	WorkingDir string            `json:"working_dir"`
 	Env        map[string]string `json:"env"`
+	Stdin      string            `json:"stdin"`
 	TimeoutSec float64           `json:"timeout_sec"`
 }
 
@@ -66,6 +70,9 @@ func (s *ShellTool) Execute(ctx context.Context, raw json.RawMessage) Result {
 	cmd.Env = os.Environ()
 	for k, v := range args.Env {
 		cmd.Env = append(cmd.Env, k+"="+v)
+	}
+	if args.Stdin != "" {
+		cmd.Stdin = strings.NewReader(args.Stdin)
 	}
 
 	out, err := cmd.CombinedOutput()

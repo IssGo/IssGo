@@ -118,11 +118,11 @@ const Shell = "bash"
 // ─── Template rendering ────────────────────────────────────────
 
 type SystemVars struct {
-	OS           string
-	Arch         string
-	WorkingDir   string
-	CurrentTime  string
-	Shell        string
+	OS               string
+	Arch             string
+	WorkingDir       string
+	CurrentTime      string
+	Shell            string
 	ToolsDescription string
 }
 

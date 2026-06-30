@@ -29,7 +29,7 @@ func NewOllamaProvider(cfg *config.Config) *OllamaProvider {
 	}
 }
 
-func (p *OllamaProvider) Name() string           { return "ollama" }
+func (p *OllamaProvider) Name() string            { return "ollama" }
 func (p *OllamaProvider) SupportsStreaming() bool { return true }
 func (p *OllamaProvider) SupportsTools() bool     { return false } // not natively
 
@@ -41,9 +41,9 @@ func (p *OllamaProvider) baseURL() string {
 }
 
 type ollamaReq struct {
-	Model    string    `json:"model"`
-	Messages []Message `json:"messages"`
-	Stream   bool      `json:"stream"`
+	Model    string         `json:"model"`
+	Messages []Message      `json:"messages"`
+	Stream   bool           `json:"stream"`
 	Options  map[string]any `json:"options,omitempty"`
 }
 
@@ -72,7 +72,10 @@ func (p *OllamaProvider) Chat(ctx context.Context, req ChatRequest) (*ChatRespon
 	}
 	defer resp.Body.Close()
 
-	data, _ := io.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("ollama read: %w", err)
+	}
 
 	if resp.StatusCode != 200 {
 		return nil, fmt.Errorf("ollama %d: %s", resp.StatusCode, string(data))
@@ -85,8 +88,8 @@ func (p *OllamaProvider) Chat(ctx context.Context, req ChatRequest) (*ChatRespon
 
 	return &ChatResponse{
 		Choices: []Choice{{
-			Index:   0,
-			Message: oresp.Message,
+			Index:        0,
+			Message:      oresp.Message,
 			FinishReason: "stop",
 		}},
 	}, nil

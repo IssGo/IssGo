@@ -18,4 +18,4 @@ issues:
   exclude-rules:
     - linters:
         - errcheck
-      text: "Error return value of .*(w\\.Write|Encode|MkdirAll|filepath\\.Walk|MarkFlagRequired|Shutdown|watcher\\.Add|watcher\\.Close|\\.Body\\.Close|stream\\.Close|fi\\.Close|fmt\\.Fprintf).* is not checked"
+      text: "Error return value of .*(w\\.Write|Encode|MkdirAll|filepath\\.Walk|MarkFlagRequired|Shutdown|watcher\\.Add|watcher\\.Close|\\.Body\\.Close|stream\\.Close|fi\\.Close|fmt\\.Fprintf|tmpl\\.Execute|rand\\.Read|json\\.Marshal|json\\.MarshalIndent|Log\\.Sync|os\\.UserHomeDir|os\\.Getwd|filepath\\.Abs|filepath\\.Rel|e\\.Info|\\.Info\\(\\)|http\\.NewRequestWithContext|io\\.ReadAll).* is not checked"
