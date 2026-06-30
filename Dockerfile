@@ -12,7 +12,6 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /issgo .
 FROM alpine:3.21
 
 RUN apk add --no-cache ca-certificates tzdata bash curl git \
-    && apk add --no-cache --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community chromium chromedriver \
     && adduser -D -h /home/issgo issgo
 
 COPY --from=builder /issgo /usr/local/bin/issgo
