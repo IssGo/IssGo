@@ -3,104 +3,158 @@ package llm
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
 
 	"github.com/issgo/issgo/config"
-	"github.com/sashabaranov/go-openai"
+	"github.com/issgo/issgo/internal/logger"
 )
 
+// Client is the primary LLM client that selects the right provider
+// and adds retry, caching, and telemetry.
 type Client struct {
-	api     *openai.Client
-	model   string
-	verbose bool
+	cfg       *config.Config
+	providers map[string]Provider
+	cache     *Cache
+	mu        sync.RWMutex
 }
 
 func NewClient(cfg *config.Config) *Client {
-	ocfg := openai.DefaultConfig(cfg.LLM.APIKey)
-	ocfg.BaseURL = cfg.LLM.BaseURL
-	return &Client{
-		api:     openai.NewClientWithConfig(ocfg),
-		model:   cfg.LLM.Model,
-		verbose: cfg.Agent.Verbose,
+	c := &Client{
+		cfg:       cfg,
+		providers: make(map[string]Provider),
+		cache:     NewCache(200, 30*time.Minute),
 	}
+
+	// Register built-in providers
+	openai := NewOpenAIProvider(cfg)
+	c.providers["openai"] = openai
+	c.providers["deepseek"] = openai // DeepSeek is OpenAI-compatible
+	c.providers["ollama"] = NewOllamaProvider(cfg)
+	// "custom" falls through to openai as well
+	c.providers["custom"] = openai
+
+	return c
 }
+
+func (c *Client) getProvider() Provider {
+	name := c.cfg.LLM.Provider
+	c.mu.RLock()
+	p, ok := c.providers[name]
+	c.mu.RUnlock()
+	if ok {
+		return p
+	}
+	// default to openai-compatible
+	return c.providers["openai"]
+}
+
+// ─── Chat ──────────────────────────────────────────────────────
 
 func (c *Client) Chat(ctx context.Context, system string, history []Message, tools []ToolDef) (*ChatResponse, error) {
-	msgs := make([]openai.ChatCompletionMessage, 0, len(history)+2)
+	return c.ChatWithCallbacks(ctx, system, history, tools, nil)
+}
 
+func (c *Client) ChatWithCallbacks(ctx context.Context, system string, history []Message, tools []ToolDef, cb *Callbacks) (*ChatResponse, error) {
+	provider := c.getProvider()
+	model := c.cfg.LLM.Model
+
+	msgs := make([]Message, 0, len(history)+2)
 	if system != "" {
-		msgs = append(msgs, openai.ChatCompletionMessage{
-			Role:    openai.ChatMessageRoleSystem,
-			Content: system,
-		})
+		msgs = append(msgs, SystemMsg(system))
+	}
+	msgs = append(msgs, history...)
+
+	req := ChatRequest{
+		Model:       model,
+		Messages:    msgs,
+		Tools:       tools,
+		Temperature: c.cfg.LLM.Temperature,
+		MaxTokens:   c.cfg.LLM.MaxTokens,
 	}
 
-	for _, h := range history {
-		msgs = append(msgs, openai.ChatCompletionMessage{
-			Role:    h.Role,
-			Content: h.Content,
-		})
+	// Try cache first (for non-streaming, no-tools calls)
+	cacheKey := ""
+	if len(tools) == 0 {
+		cacheKey = c.cacheKey(system, history)
+		if entry, ok := c.cache.Get(cacheKey); ok {
+			logger.Log.Debugw("cache hit")
+			return entry, nil
+		}
 	}
 
-	req := openai.ChatCompletionRequest{
-		Model:    c.model,
-		Messages: msgs,
+	// Execute with retry
+	var resp *ChatResponse
+	var err error
+	timeout := Duration(c.cfg.LLM.TimeoutSecs)
+
+	for attempt := 0; attempt <= c.cfg.LLM.RetryCount; attempt++ {
+		attemptCtx, cancel := context.WithTimeout(ctx, timeout)
+		resp, err = provider.Chat(attemptCtx, req)
+		cancel()
+
+		if err == nil {
+			break
+		}
+		if cb != nil && cb.OnRetry != nil {
+			cb.OnRetry(attempt, err)
+		}
+		logger.Log.Warnw("llm retry", "attempt", attempt, "error", err)
+		time.Sleep(time.Duration(attempt+1) * time.Second)
 	}
 
-	if len(tools) > 0 {
-		req.Tools = toOpenAITools(tools)
-	}
-
-	resp, err := c.api.CreateChatCompletion(ctx, req)
 	if err != nil {
-		return nil, fmt.Errorf("chat completion: %w", err)
+		// Attempt fallback to uncached call
+		return nil, fmt.Errorf("chat: %w", err)
 	}
 
-	return toChatResponse(resp), nil
+	// Cache successful non-tool responses
+	if cacheKey != "" && resp != nil {
+		c.cache.Set(cacheKey, resp)
+	}
+
+	return resp, nil
 }
 
-func toOpenAITools(tools []ToolDef) []openai.Tool {
-	result := make([]openai.Tool, len(tools))
-	for i, t := range tools {
-		result[i] = openai.Tool{
-			Type: openai.ToolTypeFunction,
-			Function: &openai.FunctionDefinition{
-				Name:        t.Name,
-				Description: t.Description,
-				Parameters:  t.Parameters,
-			},
-		}
+// ─── Streaming ─────────────────────────────────────────────────
+
+func (c *Client) ChatStream(ctx context.Context, system string, history []Message, tools []ToolDef) (<-chan StreamChunk, error) {
+	provider := c.getProvider()
+	if !provider.SupportsStreaming() {
+		return nil, fmt.Errorf("provider %s does not support streaming", provider.Name())
 	}
-	return result
+
+	msgs := make([]Message, 0, len(history)+2)
+	if system != "" {
+		msgs = append(msgs, SystemMsg(system))
+	}
+	msgs = append(msgs, history...)
+
+	req := ChatRequest{
+		Model:       c.cfg.LLM.Model,
+		Messages:    msgs,
+		Tools:       tools,
+		Temperature: c.cfg.LLM.Temperature,
+		MaxTokens:   c.cfg.LLM.MaxTokens,
+		Stream:      true,
+	}
+
+	return provider.ChatStream(ctx, req)
 }
 
-func toChatResponse(resp openai.ChatCompletionResponse) *ChatResponse {
-	cr := &ChatResponse{
-		Usage: Usage{
-			PromptTokens:     resp.Usage.PromptTokens,
-			CompletionTokens: resp.Usage.CompletionTokens,
-			TotalTokens:      resp.Usage.TotalTokens,
-		},
-	}
+// ─── Cache ─────────────────────────────────────────────────────
 
-	for _, choice := range resp.Choices {
-		c := Choice{
-			FinishReason: string(choice.FinishReason),
-			Message: Message{
-				Role:    choice.Message.Role,
-				Content: choice.Message.Content,
-			},
-		}
+func (c *Client) cacheKey(system string, history []Message) string {
+	h := fmt.Sprintf("%s|%s|%s|%v|%v",
+		c.cfg.LLM.Provider, c.cfg.LLM.Model, system,
+		history, c.cfg.LLM.Temperature)
+	return fmt.Sprintf("%x", h)
+}
 
-		for _, tc := range choice.Message.ToolCalls {
-			c.ToolCalls = append(c.ToolCalls, ToolCall{
-				ID:        tc.ID,
-				Name:      tc.Function.Name,
-				Arguments: tc.Function.Arguments,
-			})
-		}
+func (c *Client) InvalidateCache() {
+	c.cache.Clear()
+}
 
-		cr.Choices = append(cr.Choices, c)
-	}
-
-	return cr
+func (c *Client) CacheStats() (size, capacity int, ttl time.Duration) {
+	return c.cache.Len(), c.cache.Cap(), c.cache.TTL()
 }

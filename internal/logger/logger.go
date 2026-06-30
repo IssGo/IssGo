@@ -1,3 +1,4 @@
+// Package logger provides structured logging via zap.
 package logger
 
 import (
@@ -7,23 +8,50 @@ import (
 
 var Log *zap.SugaredLogger
 
-func Init(verbose bool) {
-	var cfg zap.Config
+type Config struct {
+	Level   string // debug, info, warn, error
+	Verbose bool
+	JSON    bool
+}
 
-	if verbose {
-		cfg = zap.NewDevelopmentConfig()
-		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+func DefaultConfig() Config {
+	return Config{Level: "info", Verbose: false, JSON: false}
+}
+
+func Init(cfg Config) {
+	var zcfg zap.Config
+
+	if cfg.Verbose || cfg.Level == "debug" {
+		zcfg = zap.NewDevelopmentConfig()
+		zcfg.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+		zcfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
 	} else {
-		cfg = zap.NewProductionConfig()
-		cfg.EncoderConfig.EncodeLevel = zapcore.CapitalLevelEncoder
-		cfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+		zcfg = zap.NewProductionConfig()
+		zcfg.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	}
 
-	logger, err := cfg.Build()
+	if cfg.JSON {
+		zcfg.Encoding = "json"
+	}
+
+	switch cfg.Level {
+	case "debug":
+		zcfg.Level = zap.NewAtomicLevelAt(zapcore.DebugLevel)
+	case "warn":
+		zcfg.Level = zap.NewAtomicLevelAt(zapcore.WarnLevel)
+	case "error":
+		zcfg.Level = zap.NewAtomicLevelAt(zapcore.ErrorLevel)
+	default:
+		zcfg.Level = zap.NewAtomicLevelAt(zapcore.InfoLevel)
+	}
+
+	zcfg.DisableCaller = true
+	zcfg.DisableStacktrace = !cfg.Verbose
+
+	logger, err := zcfg.Build()
 	if err != nil {
-		panic("failed to initialize logger: " + err.Error())
+		panic("logger init: " + err.Error())
 	}
-
 	Log = logger.Sugar()
 }
 

@@ -13,81 +13,99 @@ import (
 type WebTool struct{}
 
 func (w *WebTool) Name() string        { return "web" }
-func (w *WebTool) Description() string { return "Make HTTP requests to fetch or send data." }
+func (w *WebTool) Description() string { return "Make HTTP requests with full support for headers, body, and auth." }
 
 func (w *WebTool) Schema() any {
 	return map[string]any{
 		"type": "object",
 		"properties": map[string]any{
-			"url": map[string]any{
-				"type":        "string",
-				"description": "The URL to request.",
-			},
-			"method": map[string]any{
-				"type":        "string",
-				"enum":        []string{"GET", "POST", "PUT", "DELETE"},
-				"description": "HTTP method.",
-			},
-			"headers": map[string]any{
-				"type":        "object",
-				"description": "HTTP headers as key-value pairs.",
-			},
-			"body": map[string]any{
-				"type":        "string",
-				"description": "Request body (JSON string or plain text).",
-			},
+			"url":     map[string]any{"type": "string", "description": "The URL to request."},
+			"method":  map[string]any{"type": "string", "enum": []string{"GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"}, "description": "HTTP method."},
+			"headers": map[string]any{"type": "object", "description": "HTTP headers."},
+			"body":    map[string]any{"type": "string", "description": "Request body."},
+			"auth":    map[string]any{"type": "object", "description": "Basic auth {username, password}."},
+			"timeout_sec": map[string]any{"type": "number", "description": "Timeout in seconds (default 30)."},
 		},
 		"required": []string{"url"},
 	}
 }
 
 type webArgs struct {
-	URL     string            `json:"url"`
-	Method  string            `json:"method"`
-	Headers map[string]string `json:"headers"`
-	Body    string            `json:"body"`
+	URL        string            `json:"url"`
+	Method     string            `json:"method"`
+	Headers    map[string]string `json:"headers"`
+	Body       string            `json:"body"`
+	Auth       struct {
+		Username string `json:"username"`
+		Password string `json:"password"`
+	} `json:"auth"`
+	TimeoutSec float64 `json:"timeout_sec"`
 }
 
 func (w *WebTool) Execute(ctx context.Context, raw json.RawMessage) Result {
 	var args webArgs
 	if err := json.Unmarshal(raw, &args); err != nil {
-		return Result{Success: false, Error: fmt.Sprintf("invalid args: %v", err)}
+		return ResultErr("invalid args: " + err.Error())
 	}
 
 	if args.Method == "" {
 		args.Method = "GET"
 	}
 
-	client := resty.New().SetTimeout(30 * time.Second)
+	timeout := 30 * time.Second
+	if args.TimeoutSec > 0 && args.TimeoutSec <= 120 {
+		timeout = time.Duration(args.TimeoutSec) * time.Second
+	}
 
-	req := client.R().
-		SetContext(ctx).
-		SetHeaders(args.Headers)
+	client := resty.New().SetTimeout(timeout)
+	client.SetRedirectPolicy(resty.FlexibleRedirectPolicy(5))
+	req := client.R().SetContext(ctx).SetHeaders(args.Headers)
+
+	if args.Auth.Username != "" {
+		req.SetBasicAuth(args.Auth.Username, args.Auth.Password)
+	}
 
 	if args.Body != "" {
 		req.SetBody(args.Body)
 	}
 
-	var respErr error
-	var resp *resty.Response
+	var (
+		resp *resty.Response
+		err  error
+	)
 
 	switch strings.ToUpper(args.Method) {
 	case "GET":
-		resp, respErr = req.Get(args.URL)
+		resp, err = req.Get(args.URL)
 	case "POST":
-		resp, respErr = req.Post(args.URL)
+		resp, err = req.Post(args.URL)
 	case "PUT":
-		resp, respErr = req.Put(args.URL)
+		resp, err = req.Put(args.URL)
 	case "DELETE":
-		resp, respErr = req.Delete(args.URL)
+		resp, err = req.Delete(args.URL)
+	case "PATCH":
+		resp, err = req.Patch(args.URL)
+	case "HEAD":
+		resp, err = req.Head(args.URL)
+	case "OPTIONS":
+		resp, err = req.Options(args.URL)
 	default:
-		return Result{Success: false, Error: "unsupported method: " + args.Method}
+		return ResultErr("unsupported method: " + args.Method)
 	}
 
-	if respErr != nil {
-		return Result{Success: false, Error: respErr.Error()}
+	if err != nil {
+		return Result{Success: false, Error: err.Error()}
 	}
 
-	output := fmt.Sprintf("Status: %d\nBody: %s", resp.StatusCode(), string(resp.Body()))
+	output := fmt.Sprintf("Status: %d %s\nHeaders:\n", resp.StatusCode(), resp.Status())
+	for k, v := range resp.Header() {
+		output += fmt.Sprintf("  %s: %s\n", k, strings.Join(v, ", "))
+	}
+	body := string(resp.Body())
+	if len(body) > 20000 {
+		body = body[:20000] + "\n... (truncated)"
+	}
+	output += "\nBody:\n" + body
+
 	return Result{Success: resp.IsSuccess(), Output: output}
 }

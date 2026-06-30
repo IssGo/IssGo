@@ -21,24 +21,27 @@ var (
 	watchDir   string
 	onChange   string
 	debounceMs int
+	watchOnce  bool
 )
 
 var watchCmd = &cobra.Command{
 	Use:   "watch [directory]",
 	Short: "Watch a directory and trigger on changes",
-	Long: `Watch a directory recursively for file changes and execute an action when changes are detected.
+	Long: `Watch a directory recursively for file changes, then execute an AI action.
 
 Examples:
   issgo watch . --on-change "run tests"
-  issgo watch ./src --on-change "format all go files"
-  issgo watch ./config --debounce 1000 --on-change "restart the server"`,
+  issgo watch ./src --on-change "format all Go files"
+  issgo watch ./config --debounce 2000 --on-change "restart the server"
+  issgo watch . --on-change "lint changed files" --once`,
 	Args: cobra.MaximumNArgs(1),
 	RunE: runWatch,
 }
 
 func init() {
-	watchCmd.Flags().StringVarP(&onChange, "on-change", "c", "", "Action to perform on file change (required)")
-	watchCmd.Flags().IntVar(&debounceMs, "debounce", 500, "Debounce delay in milliseconds")
+	watchCmd.Flags().StringVarP(&onChange, "on-change", "c", "", "AI action to perform on file change (required)")
+	watchCmd.Flags().IntVarP(&debounceMs, "debounce", "d", 500, "Debounce delay in milliseconds")
+	watchCmd.Flags().BoolVar(&watchOnce, "once", false, "Run once on first change and exit")
 	watchCmd.MarkFlagRequired("on-change")
 	rootCmd.AddCommand(watchCmd)
 }
@@ -48,22 +51,17 @@ func runWatch(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		watchDir = args[0]
 	}
+	absDir, _ := filepath.Abs(watchDir)
 
-	absDir, err := filepath.Abs(watchDir)
+	cfg, err := loadConfig()
 	if err != nil {
-		return fmt.Errorf("resolve path: %w", err)
+		return err
 	}
-
-	cfg, err := config.Load()
-	if err != nil {
-		return fmt.Errorf("load config: %w", err)
-	}
-
-	logger.Init(cfg.Agent.Verbose)
+	logger.Init(logger.Config{Verbose: cfg.Agent.Verbose})
 	defer logger.Sync()
 
-	if cfg.LLM.APIKey == "" {
-		return fmt.Errorf("no API key configured")
+	if errs := config.Validate(cfg); len(errs) > 0 {
+		return fmt.Errorf(config.FormatErrors(errs))
 	}
 
 	watcher, err := fsnotify.NewWatcher()
@@ -72,30 +70,24 @@ func runWatch(cmd *cobra.Command, args []string) error {
 	}
 	defer watcher.Close()
 
-	// Add directory and subdirectories
-	if err := filepath.Walk(absDir, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
+	filepath.Walk(absDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil || !info.IsDir() {
+			return nil
 		}
-		if info.IsDir() {
-			return watcher.Add(path)
+		base := filepath.Base(path)
+		if base == ".git" || base == "node_modules" || base == "vendor" {
+			return filepath.SkipDir
 		}
+		watcher.Add(path)
 		return nil
-	}); err != nil {
-		return fmt.Errorf("walk directory: %w", err)
-	}
+	})
 
 	green := color.New(color.FgGreen).SprintFunc()
-	bold := color.New(color.Bold).SprintFunc()
-
-	fmt.Printf("\n%s %s\n", green("Watching:"), absDir)
-	fmt.Printf("%s %s\n\n", green("On change:"), onChange)
+	fmt.Printf("\n%s %s\n%s %s\n\n", green("Watching:"), absDir, green("On change:"), onChange)
 
 	ag := agent.New(cfg)
-
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
 	var debounce *time.Timer
 
 	for {
@@ -104,42 +96,32 @@ func runWatch(cmd *cobra.Command, args []string) error {
 			if !ok {
 				return nil
 			}
-
-			// Ignore hidden files and temp files
+			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) == 0 {
+				continue
+			}
 			base := filepath.Base(event.Name)
 			if len(base) > 0 && base[0] == '.' {
 				continue
 			}
 
-			if event.Op&(fsnotify.Write|fsnotify.Create|fsnotify.Remove|fsnotify.Rename) == 0 {
-				continue
-			}
-
-			fmt.Printf("  %s %s\n", bold("Changed:"), event.Name)
-
 			if debounce != nil {
 				debounce.Stop()
 			}
-
 			debounce = time.AfterFunc(time.Duration(debounceMs)*time.Millisecond, func() {
-				fmt.Printf("\n%s\n\n", bold("Executing: "+onChange))
-				ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+				fmt.Printf("\n%s %s\n\n", color.New(color.Bold).Sprint("Executing:"), onChange)
+				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
 				defer cancel()
-
 				result, err := ag.Run(ctx, onChange)
 				if err != nil {
 					fmt.Printf("  Error: %v\n", err)
 				} else {
-					fmt.Printf("  Result: %s\n", result)
+					fmt.Printf("  %s\n\n", result)
 				}
-				fmt.Println()
+				if watchOnce {
+					fmt.Println("Exiting (--once).")
+					os.Exit(0)
+				}
 			})
-
-		case err, ok := <-watcher.Errors:
-			if !ok {
-				return nil
-			}
-			logger.Log.Errorw("watch error", "error", err)
 
 		case <-sigCh:
 			fmt.Println("\nStopping watcher...")

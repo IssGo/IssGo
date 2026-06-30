@@ -1,53 +1,105 @@
 package agent
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"runtime"
 	"strings"
-	"text/template"
 	"time"
 
+	"github.com/fatih/color"
 	"github.com/issgo/issgo/llm"
 	"github.com/issgo/issgo/prompts"
 	"github.com/issgo/issgo/tools"
+
+	"github.com/issgo/issgo/internal/logger"
 )
+
+// ─── Executor ──────────────────────────────────────────────────
 
 type Executor struct {
 	client   *llm.Client
 	registry *tools.Registry
 	memory   *Memory
+	options  ExecutorOptions
 }
 
-func NewExecutor(client *llm.Client, registry *tools.Registry, memory *Memory) *Executor {
-	return &Executor{client: client, registry: registry, memory: memory}
+type ExecutorOptions struct {
+	MaxSteps     int
+	MaxRetries   int
+	Streaming    bool
+	Verbose      bool
+	AllowApprove bool
+	Reflector    *Reflector
+	Safety       *Safety
 }
 
-func (e *Executor) Run(ctx context.Context, task string, maxSteps int) (string, error) {
-	sysPrompt := e.buildSystemPrompt()
-	toolDefs := e.registry.List()
+func NewExecutor(client *llm.Client, registry *tools.Registry, memory *Memory, opts ExecutorOptions) *Executor {
+	if opts.MaxSteps <= 0 {
+		opts.MaxSteps = 30
+	}
+	if opts.MaxRetries <= 0 {
+		opts.MaxRetries = 3
+	}
+	return &Executor{
+		client:   client,
+		registry: registry,
+		memory:   memory,
+		options:  opts,
+	}
+}
 
+// Run executes the task using the ReAct pattern.
+func (e *Executor) Run(ctx context.Context, task string) (string, error) {
 	e.memory.Add("user", task)
+	toolDefs := e.registry.List()
+	sysPrompt := e.buildSystemPrompt()
 
-	for step := 0; step < maxSteps; step++ {
+	cyan := color.New(color.FgCyan).SprintFunc()
+	if e.options.Verbose {
+		fmt.Printf("\n%s\n", cyan("Available tools:"))
+		for _, t := range toolDefs {
+			fmt.Printf("  - %s: %s\n", t.Name, t.Description)
+		}
+	}
+
+	for step := 0; step < e.options.MaxSteps; step++ {
+		select {
+		case <-ctx.Done():
+			return "", ctx.Err()
+		default:
+		}
+
 		resp, err := e.client.Chat(ctx, sysPrompt, e.memory.History(), toolDefs)
 		if err != nil {
+			logger.Log.Errorw("chat error", "step", step, "error", err)
+			// Retry
+			if step < e.options.MaxSteps-1 {
+				continue
+			}
 			return "", fmt.Errorf("step %d: %w", step, err)
 		}
 
 		if len(resp.Choices) == 0 {
-			return "", fmt.Errorf("step %d: no response from LLM", step)
+			return "", fmt.Errorf("step %d: empty response from LLM", step)
 		}
 
 		choice := resp.Choices[0]
 
-		// If the LLM made tool calls, execute them.
+		// Handle tool calls
 		if len(choice.ToolCalls) > 0 {
+			e.memory.AddAssistantToolCalls(choice.ToolCalls)
+
+			if e.options.Verbose {
+				for _, tc := range choice.ToolCalls {
+					fmt.Printf("  [tool:%s] %s\n", tc.Name, tc.Arguments)
+				}
+			}
+
 			for _, tc := range choice.ToolCalls {
-				e.memory.Add("assistant", fmt.Sprintf("[tool:%s] %s", tc.Name, tc.Arguments))
 				result := e.registry.Execute(ctx, tc.Name, json.RawMessage(tc.Arguments))
+
 				output := result.Output
 				if !result.Success {
 					output = "ERROR: " + result.Error
@@ -55,43 +107,68 @@ func (e *Executor) Run(ctx context.Context, task string, maxSteps int) (string, 
 						output += "\n" + result.Output
 					}
 				}
-				e.memory.Add("tool", fmt.Sprintf("[%s] %s", tc.Name, output))
+
+				if e.options.Verbose {
+					if result.Success {
+						fmt.Printf("  [result:%s] ✓ (%d chars)\n", tc.Name, len(result.Output))
+					} else {
+						fmt.Printf("  [result:%s] ✗ %s\n", tc.Name, result.Error)
+					}
+				}
+
+				e.memory.AddToolResult(tc.Name, output)
+
+				// Safety check on shell commands
+				if tc.Name == "shell" && e.options.AllowApprove {
+					cmd, _ := tools.MustGetArg(json.RawMessage(tc.Arguments), "command")
+					if cmd != "" && e.options.Safety != nil {
+						if blocked := e.options.Safety.EvaluateCommand(ctx, cmd, task); blocked {
+							e.memory.AddToolResult(tc.Name, "BLOCKED: Command was evaluated as unsafe")
+						}
+					}
+				}
 			}
 			continue
 		}
 
-		// No tool calls — LLM is done. Return the content.
+		// No tool calls — LLM is done
 		content := strings.TrimSpace(choice.Message.Content)
-		if content != "" {
-			e.memory.Add("assistant", content)
+		e.memory.AddAssistant(content)
+
+		// Run reflector if enabled
+		if e.options.Reflector != nil && !e.options.Reflector.HasRun() {
+			e.options.Reflector.Reflect(ctx, task, e.memory)
 		}
+
 		return content, nil
 	}
 
-	// If we exhausted steps, ask the LLM to summarize.
-	resp, err := e.client.Chat(ctx, sysPrompt, append(e.memory.History(),
-		llm.Message{Role: "user", Content: "Summarize what you've done so far in a few sentences."},
-	), nil)
+	// Exhausted steps — ask for summary
+	logger.Log.Warnw("max steps reached", "max", e.options.MaxSteps)
+	e.memory.Add("user", "You have reached the maximum number of steps. Please summarize what you've accomplished so far in a few sentences and explain what remains to be done.")
+
+	resp, err := e.client.Chat(ctx, sysPrompt, e.memory.History(), nil)
 	if err == nil && len(resp.Choices) > 0 {
-		return resp.Choices[0].Message.Content, nil
+		summary := strings.TrimSpace(resp.Choices[0].Message.Content)
+		e.memory.AddAssistant(summary)
+		return summary + "\n\n---\n⚠ Max steps reached. Task may be incomplete.", nil
 	}
 
-	return "task did not complete within the maximum number of steps", nil
+	return "⚠ Task did not complete within the maximum step limit.", nil
 }
 
 func (e *Executor) buildSystemPrompt() string {
-	tmpl, err := template.New("system").Parse(prompts.SystemPrompt)
-	if err != nil {
-		return prompts.SystemPrompt
+	var toolDescs []string
+	for _, t := range e.registry.List() {
+		toolDescs = append(toolDescs, fmt.Sprintf("- **%s**: %s", t.Name, t.Description))
 	}
 
-	var buf bytes.Buffer
-	_ = tmpl.Execute(&buf, map[string]string{
-		"WorkingDir":  ".",
-		"CurrentTime": time.Now().Format(time.RFC3339),
-		"OS":          runtime.GOOS,
-		"Arch":        runtime.GOARCH,
+	return prompts.RenderSystem(prompts.SystemVars{
+		OS:                runtime.GOOS,
+		Arch:              runtime.GOARCH,
+		WorkingDir:        ".",
+		CurrentTime:       time.Now().Format(time.RFC3339),
+		Shell:             "bash",
+		ToolsDescription:  strings.Join(toolDescs, "\n"),
 	})
-
-	return buf.String()
 }
