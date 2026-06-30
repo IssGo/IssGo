@@ -47,6 +47,19 @@ func (sm *SessionManager) Create(task string, memory *Memory) *Session {
 	return s
 }
 
+// CreateNamed creates a session with an explicit ID (e.g., user-chosen name).
+// The caller must call Save to persist.
+func (sm *SessionManager) CreateNamed(id, task string, memory *Memory) *Session {
+	return &Session{
+		ID:        id,
+		Task:      task,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+		Memory:    memory.ToSnapshot(),
+		Status:    "running",
+	}
+}
+
 func (sm *SessionManager) Save(s *Session) {
 	s.UpdatedAt = time.Now()
 	data, err := json.MarshalIndent(s, "", "  ")
@@ -94,5 +107,6 @@ func (sm *SessionManager) Delete(id string) error {
 }
 
 func (sm *SessionManager) path(id string) string {
-	return filepath.Join(sm.dir, id+".json")
+	// Defense in depth: clean and use only the basename to prevent traversal
+	return filepath.Join(sm.dir, filepath.Base(filepath.Clean(id))+".json")
 }

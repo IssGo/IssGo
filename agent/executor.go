@@ -169,6 +169,11 @@ func (e *Executor) Run(ctx context.Context, task string) (string, error) {
 		// Run reflector if enabled
 		if e.options.Reflector != nil && !e.options.Reflector.HasRun() {
 			e.options.Reflector.Reflect(ctx, task, e.memory)
+			if e.options.Reflector.NeedsReplan() {
+				content += "\n\n---\n⚠ Self-review suggests the plan may need adjustment: " + e.options.Reflector.Feedback()
+			} else if e.options.Reflector.IsBlocked() {
+				content += "\n\n---\n⛔ Self-review indicates this task may be blocked: " + e.options.Reflector.Feedback()
+			}
 		}
 
 		return content, nil

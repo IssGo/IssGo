@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 
 	"github.com/issgo/issgo/config"
@@ -117,8 +118,12 @@ func (a *Agent) ListTools() []string { return a.registry.ToolNames() }
 // ─── Session management ───────────────────────────────────────
 
 // SaveSession saves the current conversation as a named session.
+// The name is used as the session ID for easy loading via /load <name>.
 func (a *Agent) SaveSession(name string) error {
-	s := a.sessions.Create(name, a.memory)
+	if strings.Contains(name, "/") || strings.Contains(name, "\\") || strings.Contains(name, "..") {
+		return fmt.Errorf("invalid session name: %q (no path separators allowed)", name)
+	}
+	s := a.sessions.CreateNamed(name, name, a.memory)
 	a.sessions.Save(s)
 	return nil
 }
