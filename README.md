@@ -19,10 +19,14 @@
   - [issgo init](#issgo-init)
   - [issgo run](#issgo-run)
   - [issgo watch](#issgo-watch)
+  - [issgo chat](#issgo-chat)
+  - [issgo serve](#issgo-serve)
+  - [issgo config](#issgo-config)
 - [配置](#配置)
   - [配置文件格式](#配置文件格式)
   - [配置加载优先级](#配置加载优先级)
   - [环境变量](#环境变量)
+  - [Profiles](#profiles多配置切换)
 - [架构](#架构)
   - [项目结构](#项目结构)
   - [核心流程](#核心流程)
@@ -32,6 +36,9 @@
   - [shell — Shell 命令](#shell--shell-命令)
   - [web — HTTP 请求](#web--http-请求)
   - [browser — 浏览器自动化](#browser--浏览器自动化)
+  - [git — Git 操作](#git--git-操作)
+  - [search — 文件内容搜索](#search--文件内容搜索)
+  - [plugins — 插件系统](#plugins--插件系统)
 - [LLM 提供商](#llm-提供商)
   - [DeepSeek（默认）](#deepseek默认)
   - [OpenAI](#openai)
@@ -83,7 +90,7 @@ Result: 已在 12 个文件中找到 23 条 TODO 注释，结果保存到 todos.
 ### 从源码编译
 
 ```bash
-git clone https://github.com/issgo/issgo.git
+git clone https://github.com/IssGo/IssGo.git
 cd issgo
 go mod tidy
 go build -o issgo .
@@ -93,7 +100,7 @@ sudo mv issgo /usr/local/bin/
 ### 使用 go install
 
 ```bash
-go install github.com/issgo/issgo@latest
+go install github.com/IssGo/IssGo@v2026.06.30_2
 ```
 
 ---
@@ -142,6 +149,8 @@ issgo run "从 package.json 中提取所有依赖名称和版本"
 | 参数 | 描述 |
 |------|------|
 | `--verbose` / `-v` | 输出详细执行日志（包含每一步的完整 LLM 响应） |
+| `--no-spinner` | 禁用进度动画 |
+| `--profile` / `-p` | 使用指定的 profile 配置 |
 
 ### issgo watch
 
@@ -157,9 +166,50 @@ issgo watch ./src --on-change "格式化修改过的文件" --debounce 1000
 | 参数 | 必需 | 默认值 | 描述 |
 |------|------|--------|------|
 | `--on-change` / `-c` | 是 | — | 文件变化时执行的 AI 任务 |
-| `--debounce` | 否 | `500` | 防抖延迟（毫秒），合并短时间内的多次变化 |
+| `--debounce` / `-d` | 否 | `500` | 防抖延迟（毫秒），合并短时间内的多次变化 |
+| `--once` | 否 | `false` | 首次变化后执行一次即退出 |
 
 > 监听范围：默认 `.`，可指定任意目录。自动递归监听所有子目录。
+
+### issgo chat
+
+启动交互式聊天模式，Agent 记忆跨消息持久化。
+
+```bash
+issgo chat
+
+# 支持的命令：
+#   /exit, /quit  — 退出
+#   /clear        — 清空对话记忆
+#   /history      — 查看对话历史
+#   /save <name>  — 保存会话
+#   /load <name>  — 加载会话
+```
+
+### issgo serve
+
+启动 HTTP API 服务器，通过 REST 接口暴露 Agent 能力。
+
+```bash
+issgo serve                  # 默认 127.0.0.1:8420
+issgo serve --port 8080      # 指定端口
+issgo serve --host 0.0.0.0   # 允许外部访问
+
+# API 端点：
+#   GET  /api/v1/health       — 健康检查
+#   POST /api/v1/run          — 执行任务
+#   POST /api/v1/stream       — SSE 流式执行
+#   GET  /api/v1/tools        — 列出可用工具
+```
+
+### issgo config
+
+查看当前配置和可用 profiles。
+
+```bash
+issgo config                  # 摘要视图
+issgo config --all            # 完整配置（JSON）
+```
 
 ---
 
@@ -181,11 +231,17 @@ tools:
   file: true                          # 允许文件操作
   web: true                           # 允许 HTTP 请求
   browser: false                      # 允许无头浏览器（需 Chrome）
+  git: true                           # 允许 Git 操作
+  search: true                        # 允许文件内容搜索
+  plugins: false                      # 允许第三方插件
 
 agent:
-  max_steps: 20                       # 单次任务最大工具调用次数
+  max_steps: 30                       # 单次任务最大工具调用次数
   allow_approve: true                 # 危险操作前询问用户
   verbose: false                      # 详细调试输出
+  streaming: true                     # 流式输出 LLM 响应
+  reflector: true                     # 任务完成后自我评估
+  max_retries: 3                      # LLM 调用失败重试次数
 ```
 
 ### 配置加载优先级
@@ -207,6 +263,34 @@ agent:
 > export ISSGO_LLM_API_KEY="sk-xxxxxxxx"
 > ```
 
+### Profiles（多配置切换）
+
+Profiles 允许预置多套 LLM 配置，通过 `--profile` / `-p` 参数或 `active` 字段快速切换：
+
+```yaml
+profiles:
+  - name: deepseek
+    provider: deepseek
+    model: deepseek-chat
+    base_url: https://api.deepseek.com
+
+  - name: openai
+    provider: openai
+    model: gpt-4o
+    base_url: https://api.openai.com/v1
+
+  - name: ollama
+    provider: ollama
+    model: qwen2.5:14b
+    base_url: http://localhost:11434
+
+active: deepseek    # 设为空字符串使用默认配置
+```
+
+```bash
+issgo run "你的任务" --profile ollama
+```
+
 ---
 
 ## 架构
@@ -221,30 +305,58 @@ issgo/
 │   ├── root.go                # CLI 根命令（Cobra）
 │   ├── init.go                # issgo init
 │   ├── run.go                 # issgo run
-│   └── watch.go               # issgo watch（fsnotify）
+│   ├── chat.go                # issgo chat（交互模式）
+│   ├── serve.go               # issgo serve（HTTP API）
+│   ├── config.go              # issgo config
+│   ├── watch.go               # issgo watch（fsnotify）
+│   └── version.go             # issgo version
 ├── agent/
 │   ├── agent.go               # Agent 门面：组装各组件
-│   ├── planner.go             # 任务规划器（将自然语言 → 步骤列表）
+│   ├── planner.go             # 任务规划器（自然语言 → 步骤列表）
 │   ├── executor.go            # 执行器（ReAct 循环）
-│   └── memory.go              # 对话历史管理
+│   ├── reflector.go           # 自省器（评估进展，决定是否重规划）
+│   ├── safety.go              # 安全审查（危险命令检测 + LLM 确认）
+│   ├── memory.go              # 对话历史管理（自动归约 + 快照）
+│   ├── session.go             # 会话持久化（保存/加载/列表）
+│   └── stream.go              # 流式执行器
 ├── tools/
 │   ├── tools.go               # Tool 接口 + Registry
-│   ├── file.go                # 文件工具
-│   ├── shell.go               # Shell 工具
-│   ├── web.go                 # HTTP 工具
-│   └── browser.go             # 浏览器工具（chromedp）
+│   ├── file.go                # 文件工具（10 种操作）
+│   ├── shell.go               # Shell 工具（安全审查 + 输出清理）
+│   ├── web.go                 # HTTP 工具（resty）
+│   ├── browser.go             # 浏览器工具（chromedp）
+│   ├── git.go                 # Git 工具
+│   ├── search.go              # 搜索工具（正则 + glob）
+│   └── plugin.go              # 插件系统
 ├── llm/
 │   ├── provider.go            # Provider 接口 + 数据类型
-│   └── client.go              # OpenAI 兼容客户端（go-openai）
+│   ├── client.go              # LLM 客户端（重试 + 缓存 + 多 provider）
+│   ├── openai.go              # OpenAI 兼容 provider
+│   ├── ollama.go              # Ollama provider（本地模型）
+│   └── cache.go               # LRU 响应缓存
+├── server/
+│   ├── server.go              # HTTP 服务器
+│   ├── handler.go             # API 路由处理
+│   └── middleware.go           # 日志 / CORS / 认证中间件
 ├── config/
-│   └── config.go              # 配置加载（viper）
+│   ├── config.go              # 配置加载（viper）
+│   ├── profile.go             # Profile 管理
+│   └── validate.go            # 配置校验
 ├── prompts/
-│   └── templates.go           # System / Planner / Memory Prompt 模板
+│   └── templates.go           # System / Planner / Reflector / Safety / Memory 模板
 └── internal/
+    ├── safe/
+    │   └── safe.go            # 静态命令安全审计
+    ├── diff/
+    │   └── diff.go            # 文本差异计算
     ├── logger/
-    │   └── logger.go          # 日志（zap）
+    │   └── logger.go          # 结构化日志（zap）
+    ├── spinner/
+    │   └── spinner.go         # 终端旋转动画
+    ├── progress/
+    │   └── progress.go        # 进度条
     └── utils/
-        └── utils.go           # 工具函数
+        └── utils.go           # 通用工具函数
 ```
 
 ### 核心流程
@@ -297,7 +409,7 @@ Step N: LLM 返回最终回复 → 任务完成
 
 ## 内置工具
 
-IssGo 内置 4 个工具，可在 `.issgo.yaml` 中独立开关。
+IssGo 内置 7 个工具，可在 `.issgo.yaml` 中独立开关。
 
 ### file — 文件操作
 
@@ -305,9 +417,14 @@ IssGo 内置 4 个工具，可在 `.issgo.yaml` 中独立开关。
 |------|------|
 | `read` | 读取文件内容 |
 | `write` | 写入文件（自动创建父目录） |
-| `list` | 列出目录内容（目录后缀 `/`） |
+| `append` | 追加内容到文件 |
+| `list` | 列出目录内容 |
 | `delete` | 删除文件或目录（递归） |
+| `copy` | 复制文件 |
+| `move` | 移动文件 |
 | `exists` | 检查文件/目录是否存在 |
+| `stat` | 获取文件详细信息 |
+| `mkdir` | 创建目录 |
 
 ```json
 // LLM 会生成类似这样的 tool_call：
@@ -322,7 +439,7 @@ IssGo 内置 4 个工具，可在 `.issgo.yaml` 中独立开关。
 
 ### shell — Shell 命令
 
-通过 `bash -c` 执行任意 Shell 命令，60 秒超时自动终止。
+通过 `bash -c` 执行任意 Shell 命令，120 秒超时自动终止。
 
 ```bash
 # 示例：LLM 会调用 shell 工具执行
@@ -341,7 +458,7 @@ cat /etc/os-release
 {
   "name": "web",
   "arguments": {
-    "url": "https://api.github.com/repos/issgo/issgo",
+    "url": "https://api.github.com/repos/IssGo/IssGo",
     "method": "GET",
     "headers": { "Accept": "application/json" }
   }
@@ -359,6 +476,44 @@ cat /etc/os-release
 | `content` | 提取页面或指定 CSS 选择器的 HTML |
 
 > 需要安装 Chrome/Chromium。默认禁用，在配置中设置 `tools.browser: true` 开启。
+
+### git — Git 操作
+
+支持常用 Git 子命令：`status`、`diff`、`log`、`branch`、`add`、`commit`、`pull`、`push`、`checkout`、`stash`、`tag` 等。
+
+```json
+{
+  "name": "git",
+  "arguments": {
+    "command": "status",
+    "repo_path": "/path/to/repo"
+  }
+}
+```
+
+> 默认禁用 force push 到 main/master 分支，确保安全。
+
+### search — 文件内容搜索
+
+支持正则表达式、字面量匹配和 glob 文件过滤的递归搜索。
+
+```json
+{
+  "name": "search",
+  "arguments": {
+    "pattern": "TODO",
+    "path": "./src",
+    "glob": "*.go",
+    "literal": true
+  }
+}
+```
+
+### plugins — 插件系统
+
+将可执行脚本放入 `~/.issgo/plugins/` 目录，脚本支持 `--issgo-manifest` 参数输出 JSON 清单即可被识别为插件工具。
+
+> 默认禁用，在配置中设置 `tools.plugins: true` 并指定 `plugins_dir` 开启。
 
 ---
 
@@ -526,13 +681,13 @@ export ISSGO_LLM_API_KEY="sk-xxxxxxxx"
 <details>
 <summary><b>Q: max_steps 应该设置多少？</b></summary>
 
-默认 20 步对大多数任务足够。复杂任务可以调大到 50。设置太小可能导致任务未完成就被截断。
+默认 30 步对大多数任务足够。复杂任务可以调大到 50。设置太小可能导致任务未完成就被截断。
 </details>
 
 <details>
 <summary><b>Q: shell 工具有哪些安全限制？</b></summary>
 
-默认启用了 60 秒超时。所有命令在当前工作目录执行。建议在配置中开启 `allow_approve: true`，在执行 `rm -rf`、`git push --force` 等危险命令前会请求确认。
+默认启用了 120 秒超时。所有命令在当前工作目录执行。建议在配置中开启 `allow_approve: true`，在执行 `rm -rf`、`git push --force` 等危险命令前会请求确认。
 </details>
 
 <details>
