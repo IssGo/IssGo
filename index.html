@@ -632,7 +632,6 @@ footer {
 
     <div class="tabs">
       <button class="tab active" onclick="switchTab(this,'tab-go')">go install</button>
-      <button class="tab" onclick="switchTab(this,'tab-pip')">pip install</button>
       <button class="tab" onclick="switchTab(this,'tab-source')">从源码编译</button>
     </div>
 
@@ -643,17 +642,6 @@ footer {
           <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
         </div>
         <pre><code>go install github.com/issgo/issgo@latest</code></pre>
-      </div>
-    </div>
-    <div class="tab-content" id="tab-pip">
-      <div class="code-block">
-        <div class="code-block-header">
-          <span class="code-block-label">Shell</span>
-          <button class="code-block-copy" onclick="copyCode(this)">Copy</button>
-        </div>
-        <pre><code>pip install issgo
-<span class="cmt"># 首次运行自动下载对应平台的 Go 二进制</span>
-issgo version</code></pre>
       </div>
     </div>
     <div class="tab-content" id="tab-source">
@@ -671,7 +659,7 @@ sudo mv issgo /usr/local/bin/</code></pre>
     </div>
 
     <p style="color:var(--text-dim);font-size:0.85rem;margin-top:12px;">
-      <strong>前置条件：</strong>Go 1.24+ 或 Python 3.8+ · DeepSeek API Key（或任意 OpenAI 兼容 API Key）· 可选：Chrome/Chromium（浏览器工具需要）
+      <strong>前置条件：</strong>Go 1.24+ · DeepSeek API Key（或任意 OpenAI 兼容 API Key）· 可选：Chrome/Chromium（浏览器工具需要）
     </p>
   </div>
 </section>
