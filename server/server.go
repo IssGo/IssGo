@@ -19,6 +19,7 @@ type Server struct {
 // AgentRunner is the interface the server needs from the agent.
 type AgentRunner interface {
 	Run(ctx context.Context, task string) (string, error)
+	ListTools() []string
 }
 
 func New(cfg *config.Config, agent AgentRunner) *Server {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -61,10 +62,10 @@ func (s *ShellTool) Execute(ctx context.Context, raw json.RawMessage) Result {
 	if args.WorkingDir != "" {
 		cmd.Dir = args.WorkingDir
 	}
-	if len(args.Env) > 0 {
-		for k, v := range args.Env {
-			cmd.Env = append(cmd.Env, k+"="+v)
-		}
+	// Start with full inherited environment, then add custom vars
+	cmd.Env = os.Environ()
+	for k, v := range args.Env {
+		cmd.Env = append(cmd.Env, k+"="+v)
 	}
 
 	out, err := cmd.CombinedOutput()
@@ -93,8 +94,8 @@ func (s *ShellTool) Execute(ctx context.Context, raw json.RawMessage) Result {
 func sanitizeOutput(s string) string {
 	var b strings.Builder
 	for _, r := range s {
-		if r == utf8.RuneError || (r < 32 && r != '\n' && r != '\r' && r != '\t') {
-			b.WriteString(fmt.Sprintf("\\x%02x", r))
+		if !utf8.ValidRune(r) || (r < 32 && r != '\n' && r != '\r' && r != '\t') {
+			b.WriteString(fmt.Sprintf("\\u%04x", r))
 		} else {
 			b.WriteRune(r)
 		}

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -86,6 +87,16 @@ func (se *StreamExecutor) RunStream(ctx context.Context, task string) <-chan Str
 						Type:   "tool_result",
 						Tool:   tc.Name,
 						Result: result,
+					}
+
+					// Safety check on shell commands
+					if tc.Name == "shell" && se.options.AllowApprove {
+						cmd, _ := tools.MustGetArg(json.RawMessage(tc.Arguments), "command")
+						if cmd != "" && se.options.Safety != nil {
+							if blocked := se.options.Safety.EvaluateCommand(ctx, cmd, task); blocked {
+								se.memory.AddToolResult(tc.Name, "BLOCKED: Command was evaluated as unsafe")
+							}
+						}
 					}
 				}
 				continue

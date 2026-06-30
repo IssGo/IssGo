@@ -101,3 +101,6 @@ func (a *Agent) Client() *llm.Client     { return a.client }
 func (a *Agent) Registry() *tools.Registry { return a.registry }
 func (a *Agent) Config() *config.Config  { return a.cfg }
 func (a *Agent) Planner() *Planner       { return a.planner }
+
+// ListTools returns the names of registered tools (implements server.AgentRunner).
+func (a *Agent) ListTools() []string { return a.registry.ToolNames() }

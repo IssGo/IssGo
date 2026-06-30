@@ -77,9 +77,8 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleTools(w http.ResponseWriter, r *http.Request) {
-	// Return placeholder - actual tools would come from registry
 	writeJSON(w, http.StatusOK, map[string]any{
-		"tools": []string{"file", "shell", "web", "browser", "git", "search"},
+		"tools": s.agent.ListTools(),
 	})
 }
 

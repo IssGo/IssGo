@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/issgo/issgo/agent"
 	"github.com/issgo/issgo/config"
@@ -73,7 +75,9 @@ func runServe(cmd *cobra.Command, args []string) error {
 	go func() {
 		<-sigCh
 		fmt.Println("\nShutting down server...")
-		srv.Shutdown(cmd.Context())
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		srv.Shutdown(shutdownCtx)
 	}()
 
 	fmt.Printf("IssGo API Server v%s\n", Version)

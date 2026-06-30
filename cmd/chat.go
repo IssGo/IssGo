@@ -2,9 +2,11 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/fatih/color"
 	"github.com/issgo/issgo/agent"
@@ -88,7 +90,9 @@ func runChat(cmd *cobra.Command, args []string) error {
 		}
 
 		// Execute task
-		result, err := ag.Run(cmd.Context(), input)
+		ctx, cancel := context.WithTimeout(cmd.Context(), 10*time.Minute)
+		result, err := ag.Run(ctx, input)
+		cancel()
 		if err != nil {
 			fmt.Printf("  %s: %v\n", color.New(color.FgRed).Sprint("Error"), err)
 			continue

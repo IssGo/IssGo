@@ -115,7 +115,7 @@ func (m *Memory) TurnCount() int {
 	defer m.mu.RUnlock()
 	turns := 0
 	for _, msg := range m.messages {
-		if msg.Role == "user" || msg.Role == "assistant" && len(msg.Content) > 0 {
+		if (msg.Role == "user" || msg.Role == "assistant") && len(msg.Content) > 0 {
 			turns++
 		}
 	}
