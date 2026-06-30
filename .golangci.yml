@@ -1,0 +1,25 @@
+linters:
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - gofmt
+    - goimports
+  disable-all: false
+
+linters-settings:
+  errcheck:
+    exclude-functions:
+      - (*net/http.ResponseWriter).Write
+      - (*encoding/json.Encoder).Encode
+      - os.MkdirAll
+      - filepath.Walk
+      - (*github.com/spf13/cobra.Command).MarkFlagRequired
+      - (*github.com/issgo/issgo/server.Server).Shutdown
+      - (*github.com/fsnotify.Watcher).Add
+
+issues:
+  exclude-use-default: false

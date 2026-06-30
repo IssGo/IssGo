@@ -25,7 +25,6 @@ type Agent struct {
 	planner   *Planner
 	reflector *Reflector
 	safety    *Safety
-	session   *Session
 }
 
 func New(cfg *config.Config) *Agent {
