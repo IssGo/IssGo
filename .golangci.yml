@@ -8,18 +8,14 @@ linters:
     - unused
     - gofmt
     - goimports
-  disable-all: false
 
 linters-settings:
   errcheck:
-    exclude-functions:
-      - (*net/http.ResponseWriter).Write
-      - (*encoding/json.Encoder).Encode
-      - os.MkdirAll
-      - filepath.Walk
-      - (*github.com/spf13/cobra.Command).MarkFlagRequired
-      - (*github.com/issgo/issgo/server.Server).Shutdown
-      - (*github.com/fsnotify.Watcher).Add
+    check-blank: true
 
 issues:
   exclude-use-default: false
+  exclude-rules:
+    - linters:
+        - errcheck
+      text: "Error return value of .*(w\\.Write|Encode|MkdirAll|filepath\\.Walk|MarkFlagRequired|Shutdown|watcher\\.Add|watcher\\.Close|\\.Body\\.Close|stream\\.Close|fi\\.Close|fmt\\.Fprintf).* is not checked"

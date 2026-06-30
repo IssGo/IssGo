@@ -12,25 +12,25 @@ import (
 // ─── Sub-configs ───────────────────────────────────────────────
 
 type LLMConfig struct {
-	Provider     string            `mapstructure:"provider"      yaml:"provider"`
-	Model        string            `mapstructure:"model"         yaml:"model"`
-	APIKey       string            `mapstructure:"api_key"       yaml:"api_key"`
-	BaseURL      string            `mapstructure:"base_url"      yaml:"base_url"`
-	Temperature  float64           `mapstructure:"temperature"   yaml:"temperature"`
-	MaxTokens    int               `mapstructure:"max_tokens"    yaml:"max_tokens"`
-	TimeoutSecs  int               `mapstructure:"timeout_secs"  yaml:"timeout_secs"`
-	Headers      map[string]string `mapstructure:"headers"       yaml:"headers"`
-	RetryCount   int               `mapstructure:"retry_count"   yaml:"retry_count"`
+	Provider    string            `mapstructure:"provider"      yaml:"provider"`
+	Model       string            `mapstructure:"model"         yaml:"model"`
+	APIKey      string            `mapstructure:"api_key"       yaml:"api_key"`
+	BaseURL     string            `mapstructure:"base_url"      yaml:"base_url"`
+	Temperature float64           `mapstructure:"temperature"   yaml:"temperature"`
+	MaxTokens   int               `mapstructure:"max_tokens"    yaml:"max_tokens"`
+	TimeoutSecs int               `mapstructure:"timeout_secs"  yaml:"timeout_secs"`
+	Headers     map[string]string `mapstructure:"headers"       yaml:"headers"`
+	RetryCount  int               `mapstructure:"retry_count"   yaml:"retry_count"`
 }
 
 type ToolsConfig struct {
-	Shell     bool   `mapstructure:"shell"      yaml:"shell"`
-	File      bool   `mapstructure:"file"       yaml:"file"`
-	Web       bool   `mapstructure:"web"        yaml:"web"`
-	Browser   bool   `mapstructure:"browser"    yaml:"browser"`
-	Git       bool   `mapstructure:"git"        yaml:"git"`
-	Search    bool   `mapstructure:"search"     yaml:"search"`
-	Plugins   bool   `mapstructure:"plugins"    yaml:"plugins"`
+	Shell      bool   `mapstructure:"shell"      yaml:"shell"`
+	File       bool   `mapstructure:"file"       yaml:"file"`
+	Web        bool   `mapstructure:"web"        yaml:"web"`
+	Browser    bool   `mapstructure:"browser"    yaml:"browser"`
+	Git        bool   `mapstructure:"git"        yaml:"git"`
+	Search     bool   `mapstructure:"search"     yaml:"search"`
+	Plugins    bool   `mapstructure:"plugins"    yaml:"plugins"`
 	PluginsDir string `mapstructure:"plugins_dir" yaml:"plugins_dir"`
 }
 
@@ -47,20 +47,20 @@ type AgentConfig struct {
 }
 
 type ServerConfig struct {
-	Enabled  bool   `mapstructure:"enabled"  yaml:"enabled"`
-	Host     string `mapstructure:"host"     yaml:"host"`
-	Port     int    `mapstructure:"port"     yaml:"port"`
-	WSEnable bool   `mapstructure:"ws"       yaml:"ws"`
+	Enabled   bool   `mapstructure:"enabled"  yaml:"enabled"`
+	Host      string `mapstructure:"host"     yaml:"host"`
+	Port      int    `mapstructure:"port"     yaml:"port"`
+	WSEnable  bool   `mapstructure:"ws"       yaml:"ws"`
 	AuthToken string `mapstructure:"auth_token" yaml:"auth_token"`
 }
 
 type Config struct {
-	LLM      LLMConfig      `mapstructure:"llm"      yaml:"llm"`
-	Tools    ToolsConfig    `mapstructure:"tools"    yaml:"tools"`
-	Agent    AgentConfig    `mapstructure:"agent"    yaml:"agent"`
-	Server   ServerConfig   `mapstructure:"server"   yaml:"server"`
-	Profiles []Profile      `mapstructure:"profiles" yaml:"profiles"`
-	Active   string         `mapstructure:"active"   yaml:"active"`
+	LLM      LLMConfig    `mapstructure:"llm"      yaml:"llm"`
+	Tools    ToolsConfig  `mapstructure:"tools"    yaml:"tools"`
+	Agent    AgentConfig  `mapstructure:"agent"    yaml:"agent"`
+	Server   ServerConfig `mapstructure:"server"   yaml:"server"`
+	Profiles []Profile    `mapstructure:"profiles" yaml:"profiles"`
+	Active   string       `mapstructure:"active"   yaml:"active"`
 }
 
 // ─── Defaults ──────────────────────────────────────────────────
@@ -97,9 +97,9 @@ func DefaultConfig() *Config {
 			MaxSessionAge: "168h",
 		},
 		Server: ServerConfig{
-			Enabled: false,
-			Host:    "127.0.0.1",
-			Port:    8420,
+			Enabled:  false,
+			Host:     "127.0.0.1",
+			Port:     8420,
 			WSEnable: true,
 		},
 	}
