@@ -1,0 +1,104 @@
+name: 🐛 Bug Report
+description: Report a bug or unexpected behavior
+title: "[Bug]: "
+labels: ["bug", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 Bug Report
+
+        Thanks for taking the time to fill out this bug report!
+        Please search [existing issues](https://github.com/VyCen/issgo/issues?q=is%3Aissue+label%3Abug) first.
+
+  - type: input
+    id: version
+    attributes:
+      label: IssGo Version
+      description: Run `issgo version` and paste the output
+      placeholder: "v2026.06.30 (built ...) / Go: go1.24.4 / OS: linux/arm64"
+    validations:
+      required: true
+
+  - type: input
+    id: llm
+    attributes:
+      label: LLM Provider & Model
+      placeholder: "DeepSeek / deepseek-chat"
+    validations:
+      required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: What happened?
+      description: Describe the bug clearly. What did you expect to happen? What actually happened?
+      placeholder: |
+        1. Ran `issgo run "..."` 
+        2. Expected: ...
+        3. Actual: ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Exact commands and inputs to reproduce the bug
+      placeholder: |
+        ```bash
+        export ISSGO_LLM_API_KEY=sk-xxx
+        issgo run "具体的任务描述"
+        ```
+      render: bash
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Run with `-v` flag and paste any error messages or stack traces
+      render: shell
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Paste relevant parts of `.issgo.yaml` (remove API keys!)
+      placeholder: |
+        ```yaml
+        llm:
+          provider: deepseek
+          model: deepseek-chat
+        tools:
+          shell: true
+        ```
+      render: yaml
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: Operating System
+      options:
+        - Linux (amd64)
+        - Linux (arm64)
+        - macOS (Intel)
+        - macOS (Apple Silicon)
+        - Windows
+        - Other
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I searched existing issues and this is not a duplicate
+          required: true
+        - label: I ran with `--verbose` and included the output
+          required: false
+        - label: I can reproduce this consistently
+          required: false

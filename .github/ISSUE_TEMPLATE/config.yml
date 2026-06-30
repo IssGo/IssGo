@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/VyCen/issgo/discussions
+    about: Ask questions, share ideas, or discuss usage here
+  - name: 📖 Documentation
+    url: https://github.com/VyCen/issgo#readme
+    about: Read the README before opening an issue

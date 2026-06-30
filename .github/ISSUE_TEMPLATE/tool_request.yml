@@ -1,0 +1,105 @@
+name: 🔧 Tool Request
+description: Request a new built-in tool or plugin
+title: "[Tool]: "
+labels: ["tools", "enhancement", "triage"]
+assignees: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🔧 Tool Request
+
+        Propose a new Tool that the IssGo Agent can use. Tools are how the agent interacts with the world.
+
+  - type: input
+    id: tool_name
+    attributes:
+      label: Tool Name
+      description: A short, lowercase, single-word identifier (e.g., `docker`, `slack`, `s3`)
+      placeholder: "docker"
+    validations:
+      required: true
+
+  - type: textarea
+    id: tool_description
+    attributes:
+      label: Tool Description
+      description: What does this tool do? (This goes into the LLM's system prompt)
+      placeholder: "Manage Docker containers: list, start, stop, inspect, and view logs."
+    validations:
+      required: true
+
+  - type: textarea
+    id: tool_schema
+    attributes:
+      label: Tool Schema (Actions)
+      description: What actions/operations should this tool support? List each with its inputs.
+      placeholder: |
+        - `list` — list all containers (optional `filter` arg)
+        - `start <name>` — start a container
+        - `stop <name>` — stop a container  
+        - `logs <name> [--tail N]` — view container logs
+        - `exec <name> <command>` — run a command inside a container
+      render: markdown
+    validations:
+      required: true
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: Example Use Cases
+      description: What would an IssGo user say to trigger this tool?
+      placeholder: |
+        - "Check which containers are down and restart them"
+        - "Pull latest images and rebuild all services"
+        - "Show me the logs from the production app container"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Tool Category
+      options:
+        - DevOps & Infrastructure
+        - Data & Databases
+        - Communication & Notifications
+        - Cloud Services
+        - Development Tools
+        - Security
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: deps
+    attributes:
+      label: Dependencies
+      description: What external programs or Go libraries does this tool need?
+      placeholder: |
+        - Requires Docker CLI installed on the host
+        - OR use Go Docker SDK: `github.com/docker/docker`
+      render: markdown
+    validations:
+      required: false
+
+  - type: textarea
+    id: safety
+    attributes:
+      label: Safety Considerations
+      description: What could go wrong? What operations should require approval?
+      placeholder: |
+        - `docker rm -f` should require `allow_approve`
+        - `docker exec` should not allow `--privileged` flag
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: readiness
+    attributes:
+      label: Would you like to implement this?
+      options:
+        - label: I plan to submit a PR for this tool
+          required: false
+        - label: I can help test this tool if someone else builds it
+          required: false
