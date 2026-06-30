@@ -11,7 +11,7 @@
 
 **Do NOT open a public issue** for security vulnerabilities.
 
-Please report security issues to: **vycen@proton.me**
+Please report security issues to: **onionnn@zohomail.cn**
 
 You will receive a response within 48 hours. We take all reports seriously.
 
