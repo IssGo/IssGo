@@ -61,7 +61,7 @@ func runServe(cmd *cobra.Command, args []string) error {
 	cfg.Server.Enabled = true
 
 	if errs := config.Validate(cfg); len(errs) > 0 {
-		return fmt.Errorf(config.FormatErrors(errs))
+		return fmt.Errorf("%s", config.FormatErrors(errs))
 	}
 
 	ag := agent.New(cfg)

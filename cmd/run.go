@@ -54,7 +54,7 @@ func runTask(cmd *cobra.Command, args []string) error {
 	defer logger.Sync()
 
 	if errs := config.Validate(cfg); len(errs) > 0 {
-		return fmt.Errorf(config.FormatErrors(errs))
+		return fmt.Errorf("%s", config.FormatErrors(errs))
 	}
 
 	bold := color.New(color.Bold).SprintFunc()

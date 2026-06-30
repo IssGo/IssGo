@@ -8,6 +8,10 @@ import (
 
 var Log *zap.SugaredLogger
 
+func init() {
+	Log = zap.NewNop().Sugar()
+}
+
 type Config struct {
 	Level   string // debug, info, warn, error
 	Verbose bool

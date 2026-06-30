@@ -42,7 +42,7 @@ func runChat(cmd *cobra.Command, args []string) error {
 	defer logger.Sync()
 
 	if errs := config.Validate(cfg); len(errs) > 0 {
-		return fmt.Errorf(config.FormatErrors(errs))
+		return fmt.Errorf("%s", config.FormatErrors(errs))
 	}
 
 	ag := agent.New(cfg)
@@ -51,7 +51,7 @@ func runChat(cmd *cobra.Command, args []string) error {
 	green := color.New(color.FgGreen).SprintFunc()
 
 	fmt.Printf("\n%s\n", bold("IssGo Chat Mode"))
-	fmt.Println("Type your tasks or commands. /exit to quit.\n")
+	fmt.Print("Type your tasks or commands. /exit to quit.\n")
 
 	scanner := bufio.NewScanner(os.Stdin)
 
