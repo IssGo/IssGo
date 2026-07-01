@@ -39,8 +39,8 @@ func runInit(cmd *cobra.Command, args []string) error {
 
 	if err := config.WriteDefault(path); err != nil {
 		// Fallback: write embedded template
-		if err := os.WriteFile(path, []byte(defaultConfigTemplate), 0o644); err != nil {
-			return fmt.Errorf("write config: %w", err)
+		if fallbackErr := os.WriteFile(path, []byte(defaultConfigTemplate), 0o644); fallbackErr != nil {
+			return fmt.Errorf("write config (primary: %v, fallback: %w)", err, fallbackErr)
 		}
 	}
 

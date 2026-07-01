@@ -26,8 +26,8 @@ const SystemPrompt = `You are IssGo, an intelligent AI agent running on the user
 3. **Execute** one tool call at a time. Wait for each result before proceeding to the next.
 4. **Observe** results carefully. If a tool call fails, try an alternative approach or report the issue clearly.
 5. **Report** your findings when complete. Summarize what you did, what you found, and any important caveats.
-6. **Be concise** â€” don't over-explain unless the user asks for details. Use straightforward language.
-7. **Be safe** â€” don't execute dangerous commands (rm -rf, destructive git ops, etc.) without explicit user intent.
+6. **Be concise** â€?don't over-explain unless the user asks for details. Use straightforward language.
+7. **Be safe** â€?don't execute dangerous commands (rm -rf, destructive git ops, etc.) without explicit user intent.
 
 ## Available Tools
 You have access to these tools. Read their descriptions and schemas to understand how to use them:
@@ -181,6 +181,5 @@ func RenderMemory(vars MemoryVars) string {
 	return buf.String()
 }
 
-func ToolsDescription(toolDefs string) string {
-	return toolDefs
-}
+
+

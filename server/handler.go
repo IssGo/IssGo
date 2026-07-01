@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 )
 
@@ -66,13 +67,13 @@ func (s *Server) handleStream(w http.ResponseWriter, r *http.Request) {
 	result, err := s.agent.Run(r.Context(), req.Task)
 	if err != nil {
 		data, _ := json.Marshal(map[string]string{"type": "error", "content": err.Error()})
-		w.Write(append(data, '\n'))
+		fmt.Fprintf(w, "data: %s\n\n", data)
 		flusher.Flush()
 		return
 	}
 
 	data, _ := json.Marshal(map[string]string{"type": "done", "content": result})
-	w.Write(append(data, '\n'))
+	fmt.Fprintf(w, "data: %s\n\n", data)
 	flusher.Flush()
 }
 

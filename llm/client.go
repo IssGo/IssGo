@@ -2,6 +2,7 @@ package llm
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"sync"
 	"time"
@@ -146,10 +147,13 @@ func (c *Client) ChatStream(ctx context.Context, system string, history []Messag
 // ─── Cache ─────────────────────────────────────────────────────
 
 func (c *Client) cacheKey(system string, history []Message) string {
-	h := fmt.Sprintf("%s|%s|%s|%v|%v",
-		c.cfg.LLM.Provider, c.cfg.LLM.Model, system,
-		history, c.cfg.LLM.Temperature)
-	return fmt.Sprintf("%x", h)
+	h := sha256.New()
+	fmt.Fprintf(h, "%s|%s|%s|", c.cfg.LLM.Provider, c.cfg.LLM.Model, system)
+	for _, msg := range history {
+		fmt.Fprintf(h, "%s:%s|", msg.Role, msg.Content)
+	}
+	fmt.Fprintf(h, "%v", c.cfg.LLM.Temperature)
+	return fmt.Sprintf("%x", h.Sum(nil))
 }
 
 func (c *Client) InvalidateCache() {
