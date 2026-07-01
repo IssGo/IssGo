@@ -1,7 +1,6 @@
 before:
   hooks:
     - go mod tidy
-    - go generate ./...
 
 builds:
   - id: issgo
@@ -36,6 +35,7 @@ archives:
         format: zip
     files:
       - README.md
+      - README-en.md
       - LICENSE
 
 checksum:
